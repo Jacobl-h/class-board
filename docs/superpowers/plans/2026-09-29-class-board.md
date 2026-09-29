@@ -1,6 +1,6 @@
 # Class Board Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **This plan changes that skill in three ways (the owner asked for them):** tasks run in parallel waves; each task uses the model and effort level given in the wave table; and verification is lighter (§1.4). Section 1 takes precedence over the sub-skill wherever they conflict.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **This plan replaces that skill's per-task loop with the fast path in §1 (the owner asked for speed, parallel agents with model and effort matched to each job, and lighter verification):** a script writes all the code, the tests run once, and agents fix only what fails. Section 1 takes precedence over the sub-skill wherever they conflict.
 
 **Goal:** Build the class board in `docs/superpowers/specs/2026-09-29-class-board-design.md`: a GitHub Pages site plus a Cloudflare Worker / Durable Object backend with live cursors, 80 replaceable tiles with history, HTML uploads, embed checks, screenshots and focus mode.
 
@@ -10,7 +10,7 @@
 - `web/`: Vite + TypeScript with no UI framework. Modules depend only on the interfaces in `web/src/contracts.ts`, and `web/src/main.ts` wires the concrete pieces together.
 - `e2e/`: Playwright tests.
 
-Tasks run in waves. The tasks within a wave touch different files and run in parallel, each on its own model and effort level.
+A script writes every file from the plan; agents, each on a model and effort level matched to the job, fix only what the checks flag.
 
 **Tech stack:** TypeScript 7 · Vite 8 · Vitest 4 (with `@cloudflare/vitest-plugin` and `happy-dom`) · Cloudflare Workers + SQLite-backed Durable Objects via `partyserver` / `partysocket` · `@cloudflare/puppeteer` (Browser Rendering) · `valibot` · Playwright · GitHub Actions → GitHub Pages.
 
@@ -18,121 +18,136 @@ Tasks run in waves. The tasks within a wave touch different files and run in par
 
 ---
 
-## 1. Execution rules (read first)
+## 1. How to execute: the fast path (read first)
 
-### 1.1 Branch
+The workstream files already contain the complete code and tests for all 152 files, so no agent
+needs to retype code. A script writes every file in task order. Agents are used only where a
+check fails. This replaces the earlier plan of seven separately run waves and 41 task agents,
+and it deliberately skips the red/green TDD ceremony: every test in the plan still exists and
+runs, once, against the finished code.
 
-Work on branch `build/v1` in `C:\Users\jacob\OneDrive\Documents\GitHub\class-board`. Before Wave 1, the orchestrator runs:
+On this path the workstream files are the source of truth for code and tests. Their
+step-by-step instructions (write the test, see it fail, implement, see it pass) describe how the
+code was designed; nobody follows them.
+
+### 1.1 Stages
+
+| Stage | Who | What | Rough time |
+|---|---|---|---|
+| 1. Write | Orchestrator, by script | Branch, write all 152 files, install packages and Chromium, commit once | ~10 min |
+| 2. Check | Orchestrator | `npm run typecheck` and `npm test` across every package; group failures by area (§1.3) | ~3 min |
+| 3. Fix | One agent per failing area, in parallel | Fix, re-check, and repeat, at most 3 rounds; an area that's still failing moves up a model tier | 15–45 min |
+| 4. End-to-end | One agent (`opus`, `medium`), then the orchestrator | `npm run e2e` in Chromium and fix what fails; then a two-tab manual check in the browser pane with a screenshot | 20–40 min |
+| 5. Review | One agent (`opus`, `high`) | A single pass over the whole repo against the spec, reporting only critical and important issues; the orchestrator applies the fixes | ~15 min |
+| 6. Deploy | The owner, with the orchestrator | The runbook in `08-e2e-launch.md`. Ask before creating the GitHub repo or pushing | Owner's pace |
+
+### 1.2 Stage 1 commands
 
 ```bash
-git -C "C:/Users/jacob/OneDrive/Documents/GitHub/class-board" switch -c build/v1
+cd "C:/Users/jacob/OneDrive/Documents/GitHub/class-board"
+git switch -c build/v1
+node docs/superpowers/plans/2026-09-29-class-board/materialize.mjs
+npm install
+cp worker/.dev.vars.example worker/.dev.vars
+npx playwright install chromium
+git add -A
+git commit -m "feat: write the class-board code from the plan" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-### 1.2 Waves
+- `materialize.mjs` writes each file's final state:
+  - it applies every "create", "replace", "append", "replace the imports" and
+    find-and-replace step in task order
+  - it exits with status 1 if any edit can't be applied exactly
+  - a dry run on 2026-09-29 mapped all 152 files with no errors; `package-lock.json` comes
+    from `npm install`
+- `worker/.dev.vars` is gitignored.
+- The Chromium download is about 115 MB and goes to `%LOCALAPPDATA%\ms-playwright`.
 
-A wave is a set of tasks whose **Files** lists don't overlap. The orchestrator runs every task
-in a wave at the same time, with the Workflow tool (template in §1.5), and then runs the
-barrier (§1.4). Waves run strictly in order. There are at most 15 tasks in a wave; the
-Workflow tool queues any beyond its concurrency cap.
+### 1.3 Areas, and the model and effort for fixing each
 
-### 1.3 Model and effort tiers
+A failing test or type error belongs to the area that owns the file it's in. When the fix
+clearly lies in another area's file (for example, a web test failing because a helper is
+wrong), give it to that area instead.
 
-The Agent tool can't set effort, so tasks run through the **Workflow tool**, whose
-`agent(prompt, { model, effort })` sets both. Fable is never used.
-
-| Tier | `model` | `effort` | Used for |
+| Area | Files | Plan sections | Model / effort |
 |---|---|---|---|
-| T0 | `haiku` | *(omit; Haiku has no effort setting)* | Copying fully specified code, config or docs |
-| T1 | `sonnet` | `low` | Small pure modules with complete code and tests |
-| T2 | `sonnet` | `medium` | UI modules, handlers, anything that needs some judgment |
-| T3 | `opus` | `medium` | Integration across modules, browser behavior, e2e |
-| T4 | `opus` | `high` | The hardest parts: the Board Durable Object core, the final wiring |
+| shared | `shared/**` | `01-foundation.md` F3–F5, master §3.1 | `sonnet` / `low` |
+| worker-leaves | `worker/src/{frameHeaders,limits,budget,teacher,files,linkCheck,shots}.ts`, `worker/test/unit/**` | `03-worker-leaves.md` | `sonnet` / `medium` |
+| worker-core | `worker/src/{store,board,tiles,content,index}.ts`, `worker/test/*.ts` | `02-worker-core.md` | `opus` / `medium` |
+| web-core | `web/src/{ui,util,net,state}/**`, `web/src/config.ts`, `web/src/board/camera.ts` and their tests | `04-web-core-a.md` | `sonnet` / `medium` |
+| web-board | `web/src/board/{input,grid,chooseLive,liveFrames,focus}.*`, `web/src/main.ts`, `web/index.html`, `web/src/styles/**` and their tests | `05-web-core-b.md`, `06-web-tiles.md` T1, T2, T5 | `opus` / `medium` |
+| web-panels | `web/src/{tiles,cursors,profile,people,teacher}/**` and their tests | `06-web-tiles.md` T3, T4, `07-web-cursors.md` | `sonnet` / `medium` |
+| config | root files, `*/package.json`, `*/tsconfig.json`, `*/vite*.config.ts`, `*/vitest*.config.ts`, `worker/wrangler.jsonc` | `01-foundation.md` F1 | `sonnet` / `medium` (runs alone, before the other areas) |
+| e2e | `e2e/**` | `08-e2e-launch.md` E1 | `opus` / `medium` |
 
-Fix-up agents at a barrier use T2, or T4 if the failing code came from a T3/T4 task.
-The final review (V2) is T4.
+- **Escalation:** an area still failing after a fix round moves up one step, from
+  `sonnet`/`low` → `sonnet`/`medium` → `opus`/`medium` → `opus`/`high`. Fable is never used.
+- **Haiku** has no place on this path: there's nothing left to transcribe.
 
-### 1.4 Verification policy (deliberately light)
+### 1.4 Rules for fix agents (include them in every fix prompt)
 
-- **Per task:** the agent follows its TDD steps. It writes the failing test, sees it fail,
-  implements, and sees it pass. It runs **only its own test files**, with the command in its task.
-- **No per-task review agents**: no spec-compliance reviewer and no code-quality reviewer.
-- **At each wave barrier** the orchestrator runs:
-  ```bash
-  cd "C:/Users/jacob/OneDrive/Documents/GitHub/class-board" && npm run typecheck && npm test
-  ```
-  If anything fails, it sends one fix-up agent the failure output and the owning task's
-  section, then re-runs the barrier. After that it commits each task separately (§1.6).
-- For tasks at T3 or T4, the orchestrator reads the diff at the barrier (a skim, not a review agent).
-- **At the end:** Wave 6 runs the e2e suite, the orchestrator does a manual check in the
-  browser pane (V1), and one T4 agent reviews the whole repo once, reporting only critical
-  and important issues (V2).
+1. **Stay in your area.** Edit only the files your prompt lists as your area; other agents are
+   fixing other areas at the same time. Don't touch `package.json`, lockfiles or configs unless
+   you're the config area.
+2. **What's correct:** the spec, the contracts (§3–§6) and your area's plan sections define correct
+   behavior.
+   - Fix code so it meets them.
+   - Change a test only when it contradicts the spec or a contract, and say so in your result.
+   - Never change a contract file (`shared/src/constants.ts`, `shared/src/types.ts`,
+     `worker/src/env.ts`, `web/src/contracts.ts`). If one blocks you, stop and report.
+3. **Check narrowly.** Run your own test files by exact path, for example
+   `npm test -w web -- test/grid.test.ts`, or `npm run test:unit -w worker -- test/unit/files.test.ts`.
+   `npm run typecheck -w <package>` is allowed, but only act on errors in your own files; others
+   may be mid-fix.
+4. **Leave git and dependencies alone.** Don't commit, and don't install or upgrade packages.
+   If a fix needs a new dependency, report it.
+5. **Return** the result JSON from §1.5: the files changed, the root cause in one sentence per
+   problem, and the final test output.
 
-### 1.5 Rules for parallel agents (learned from earlier multi-agent work in these repos)
+### 1.5 Workflow template for Stage 3
 
-Every executor prompt must include these rules:
-
-1. Edit only the files listed under your task's **Files**. Never touch `package.json`, lockfiles
-   or config files unless they're in your list. Don't install packages; F1 installs every
-   dependency up front.
-2. **Don't commit and don't stage.** Parallel `git commit` calls race on `.git/index.lock`, and
-   `git commit` takes the whole index, including other agents' staged files.
-3. Run **only your own tests** (the command in your task). Don't run `npm test` for the whole
-   repo or `tsc` across a package. They'd see other agents' half-written files and report
-   false failures.
-4. Code against the contracts in §3–§5 exactly: file names, export names, signatures, CSS
-   classes, `data-*` selectors. If a contract looks wrong or blocks you, stop and return
-   `status: "blocked"` with the reason. Never change a contract file yourself.
-5. When done, return the JSON result schema below.
-
-Workflow template for running a wave (the orchestrator fills `args.tasks`):
+The Agent tool can't set effort, so fix agents run through the Workflow tool.
+`args.areas` holds one entry per failing area, taken from the Stage 2 output.
 
 ```js
 export const meta = {
-  name: 'class-board-wave',
-  description: 'Run one wave of class-board plan tasks in parallel',
-  phases: [{ title: 'Wave' }],
+  name: 'class-board-fix-round',
+  description: 'Fix failing class-board areas in parallel, one agent per area',
+  phases: [{ title: 'Fix' }],
 }
 const RESULT = {
   type: 'object',
   properties: {
-    id: { type: 'string' },
-    status: { type: 'string', enum: ['done', 'blocked'] },
+    area: { type: 'string' },
+    status: { type: 'string', enum: ['green', 'still_failing', 'blocked'] },
     filesChanged: { type: 'array', items: { type: 'string' } },
-    testCommand: { type: 'string' },
-    testSummary: { type: 'string' },
-    notes: { type: 'string' },
+    rootCauses: { type: 'array', items: { type: 'string' } },
+    testOutput: { type: 'string' },
+    report: { type: 'string' },
   },
-  required: ['id', 'status', 'filesChanged', 'testSummary'],
+  required: ['area', 'status', 'filesChanged', 'rootCauses', 'testOutput'],
 }
 const REPO = 'C:/Users/jacob/OneDrive/Documents/GitHub/class-board'
-const results = await parallel(args.tasks.map(t => () => agent(
-  `Execute Task ${t.id} of the class-board implementation plan.\n` +
-  `Repo: ${REPO} (branch build/v1).\n` +
-  `1. Read ${REPO}/docs/superpowers/plans/2026-09-29-class-board.md sections 1-6 (execution rules and contracts).\n` +
-  `2. Read your task section "Task ${t.id}" in ${REPO}/docs/superpowers/plans/2026-09-29-class-board/${t.file}.\n` +
-  `3. Follow its steps in order. Test first, see it fail, implement, see it pass.\n` +
-  `Rules: edit only your task's Files; do not commit or stage; do not install packages; ` +
-  `run only your task's test command, never the whole suite or tsc; follow the contracts exactly; ` +
-  `if a contract blocks you, stop and return status "blocked" with the reason.`,
-  { label: t.id, phase: 'Wave', model: t.model, ...(t.effort ? { effort: t.effort } : {}), schema: RESULT },
+const results = await parallel(args.areas.map(a => () => agent(
+  'Fix the "' + a.name + '" area of the class-board repo at ' + REPO + ' (branch build/v1).\n' +
+  'Your files (edit only these): ' + a.files + '\n' +
+  'Read master plan ' + REPO + '/docs/superpowers/plans/2026-09-29-class-board.md sections 1.4 and 2-6, ' +
+  'then these plan sections for intended behavior: ' + a.planSections + '.\n' +
+  'Failures to fix:\n' + a.failures + '\n' +
+  'Follow the rules in section 1.4 exactly.',
+  { label: a.name, phase: 'Fix', model: a.model, effort: a.effort, schema: RESULT },
 )))
 return results
 ```
 
-Example `args` for a wave: `{ "tasks": [ { "id": "F3", "file": "01-foundation.md", "model": "haiku" }, { "id": "U2", "file": "04-web-core-a.md", "model": "sonnet", "effort": "medium" } ] }`.
+### 1.6 Commits
 
-### 1.6 Commits (orchestrator only, at the barrier)
+The orchestrator commits:
+- once after Stage 1
+- once after each fix round, once after Stage 4, and once after the review fixes, each with a
+  message naming the areas fixed
 
-For each task in the wave, in wave-table order, stage only that task's files and commit:
-
-```bash
-cd "C:/Users/jacob/OneDrive/Documents/GitHub/class-board"
-git add <the task's Files>
-git commit -m "<type>(<area>): <task title> (<task id>)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-```
-
-`<type>` is `feat` for code, `test` for test-only changes, `chore` for config, `docs` for docs.
-Each task's last step spells out its exact `git add` line.
+The trailer is `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ---
 
@@ -603,7 +618,9 @@ handle (§5.4).
 
 ---
 
-## 7. Wave schedule
+## 7. Task index
+
+The fast path (§1) doesn't run these waves or tiers. This table maps each task to its files and plan section; the waves record the dependency order `materialize.mjs` applies, and the tiers show how hard each part was to design.
 
 `File` is the workstream file under `docs/superpowers/plans/2026-09-29-class-board/`.
 
