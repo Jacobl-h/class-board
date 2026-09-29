@@ -222,10 +222,12 @@ focus-mode tile are always live and don't count toward the cap. A live tile whos
 - **Tiles that can't be embedded:** focus mode shows the screenshot edge to edge, with an
   "Open in new tab" button in the center (a click, so the browser allows the new tab).
 - **For everyone else:** your cursor is parked on the tile as "Ana · viewing C4".
-- **Constraint:** the iframe element must never move within the DOM, or it reloads. Preferred
-  approach: put the tile's wrapper into the browser's top layer with the Popover API, so it
-  ignores the camera transform. Fallback: resize the tile where it is and move the camera so
-  the tile covers the viewport. A spike settles this before the rest is built (§9).
+- **Constraint:** the iframe element must never move within the DOM, or it reloads. Approach:
+  add `popover="manual"` to the tile's `.tile-body` and call `showPopover()`. That puts it in
+  the browser's top layer, where it ignores the camera transform. Removing the attribute on
+  exit restores it. Verified on 2026-09-29 in Chromium: inside a board scaled to 0.3, the
+  popover covered the whole viewport, the embedded page kept running with no reload and
+  re-laid out at the window width, and after exit it returned to its place on the board.
 - There is no full-screen feature. Embedded players keep their own full-screen buttons (§5.9).
 
 ### 5.6 Posting, replacing, renaming, history
@@ -396,7 +398,9 @@ Client → server:
 |---|---|---|
 | `hello` | `clientId`, `profile` | Must be the first message. The server replies with `snapshot`. |
 | `profile` | `profile` | Up to 10 a minute |
-| `cursor` | `x`, `y` · or `tile`, `mode` · or `away: true` | Up to 6 a second; extras are dropped |
+| `cursor` | `x`, `y` | Up to 6 a second; extras are dropped. Also marks you as on the board. |
+| `dock` | `slot`, `mode` (`using` or `viewing`) | You're using a tile or viewing it in focus mode |
+| `away` | none | Your tab is hidden |
 | `post` | `reqId`, `slot`, `baseVersion`, `content` (`{kind:'link', url}` or `{kind:'html', fileId}`), `label` | |
 | `rename` | `reqId`, `slot`, `baseVersion`, `label` | |
 | `restore` | `reqId`, `slot`, `baseVersion`, `versionId` | |
@@ -408,8 +412,9 @@ Server → client:
 | `type` | Fields |
 |---|---|
 | `snapshot` | `you`, `tiles` (80 `TileView`s), `locked`, `people`, `rate` |
-| `cursors` | A batch of `[connId, x, y]`, `[connId, 'tile', slot, mode]` or `[connId, 'away']` entries. Sent at most every 100 ms, and only when something changed. |
-| `person` | `joined`, `updated` or `left`, with the person |
+| `cursors` | A batch of `[connId, x, y]` positions. Sent at most every 100 ms, and only when something moved. |
+| `person` | `joined` or `updated`, with the person, including their presence (`board`, `tile` with `slot` and `mode`, or `away`) |
+| `personLeft` | `id` |
 | `tile` | `slot`, `view`. Sent after any edit, link check or screenshot. |
 | `locked` | `locked` |
 | `rate` | `hz`: 5, 2 or 0 |
@@ -507,10 +512,12 @@ Implementation follows test-driven development, one task at a time as set out in
   - focus mode by zooming, then leaving with Back, with the browser back button, and via a deep link
   - an HTML upload runs, and can't read `localStorage`
   - a link that can't be embedded shows a card
-- **Spikes before the full build:**
-  1. Focus mode with the Popover API keeps the iframe running, with no reload, inside a transformed board.
-  2. Browser Rendering can be called from a Durable Object on the free plan.
-  3. PartyServer hibernation works with connection state and a batching timer.
+- **Spikes:**
+  1. ~~Focus mode with the Popover API keeps the iframe running, with no reload, inside a transformed board.~~
+     Done on 2026-09-29; it works (§5.5).
+  2. Browser Rendering can be called from a Durable Object on the free plan. Run at first deploy.
+  3. PartyServer hibernation works with connection state and a batching timer. Covered by the
+     Board Durable Object's tests.
 - **Before class:** run a Node load test with 75 simulated cursors at 5 Hz against the
   deployed Worker, to measure message counts and CPU. Then open the board once on the school
   network.
@@ -556,7 +563,7 @@ Implementation follows test-driven development, one task at a time as set out in
 |---|---|
 | The school network blocks `*.workers.dev` | Check before class. Fall back to a custom domain (§10). |
 | Browser Rendering from a Durable Object on the free plan isn't documented | Spike 2. Fallback: Browser Rendering's REST `/screenshot` endpoint, called from the Worker (1 request every 10 s on the free plan). |
-| The Popover API top layer doesn't keep the iframe alive in every browser | Spike 1. Fallback: resize in place and move the camera (§5.5). |
+| The Popover API approach is verified only in Chromium | Check focus mode in Firefox and Safari during end-to-end testing. Fallback: resize the tile in place and move the camera. |
 | Some sites send different headers to bots, or block Cloudflare's IPs | The "Blank? Open in new tab" hint, plus the screenshot card. |
 | Anyone with the link can join | Share it only with the class. A class join code is a small follow-up if needed. |
 | Anyone with a file's URL can open the upload | Ids can't be guessed, pages are `noindex`, only the board can frame them, and the teacher can clear the tile. |
@@ -566,8 +573,8 @@ Implementation follows test-driven development, one task at a time as set out in
 Each step ends with something that runs and is tested, so the plan can check progress
 along the way.
 
-1. **Spikes** (§9): focus mode with the Popover API, Browser Rendering from a Durable Object,
-   PartyServer hibernation.
+1. **Spikes** (§9): Browser Rendering from a Durable Object (at first deploy), PartyServer
+   hibernation (in the Board Durable Object's tests). The focus-mode spike is already done.
 2. **Skeleton:** npm workspaces, `shared/protocol.ts`, a Worker and Board Durable Object that
    answer `hello` with `snapshot`, and a web page that connects and shows the connection status.
 3. **Board canvas:** the grid, the camera (pan, zoom, fit, zoom to tile), empty tiles with labels.
