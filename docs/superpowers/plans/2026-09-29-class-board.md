@@ -12,7 +12,7 @@
 
 Tasks run in waves. The tasks within a wave touch different files and run in parallel, each on its own model and effort level.
 
-**Tech stack:** TypeScript · Vite · Vitest (with `@cloudflare/vitest-pool-workers` and `happy-dom`) · Cloudflare Workers + SQLite-backed Durable Objects via `partyserver` / `partysocket` · `@cloudflare/puppeteer` (Browser Rendering) · `valibot` · Playwright · GitHub Actions → GitHub Pages.
+**Tech stack:** TypeScript 7 · Vite 8 · Vitest 4 (with `@cloudflare/vitest-plugin` and `happy-dom`) · Cloudflare Workers + SQLite-backed Durable Objects via `partyserver` / `partysocket` · `@cloudflare/puppeteer` (Browser Rendering) · `valibot` · Playwright · GitHub Actions → GitHub Pages.
 
 **Detailed tasks live in the workstream files** listed in §9. This file holds everything that has to be the same across them: the execution rules, the wave schedule, and the fixed contracts (Task F2 contains their code).
 
@@ -163,8 +163,12 @@ Each task's last step spells out its exact `git add` line.
 - **Test environments:**
   - shared: Node.
   - web: `happy-dom`.
-  - worker: `@cloudflare/vitest-pool-workers`, running in workerd. Tests import `env`, `SELF`
-    and `runInDurableObject` from `cloudflare:test`. Test bindings are fixed:
+  - worker: `@cloudflare/vitest-plugin`, running in workerd. It's the successor to
+    `@cloudflare/vitest-pool-workers`, whose last release can't boot at our compatibility date.
+    Tests import `env`, `SELF` and `runInDurableObject` from `cloudflare:test`, typed through a
+    global `Cloudflare.Env` augmentation in `worker/test/env.d.ts` (`ProvidedEnv` no longer
+    exists). **`env.BROWSER` is undefined in the Durable Object tests**, because F1 renames the
+    binding so tests never launch a real Chrome; inject a fake `Shooter` instead. Test bindings are fixed:
     `TEACHER_CODE=test-code`, `BOARD_ORIGIN=https://jacobl-h.github.io`,
     `PUBLIC_URL=http://localhost:8787`,
     `ALLOWED_ORIGINS=https://jacobl-h.github.io,http://localhost:5173`, `DAILY_MESSAGE_BUDGET=2000000`.
@@ -173,8 +177,18 @@ Each task's last step spells out its exact `git add` line.
 - **Web config:** `VITE_SERVER_URL` defaults to `http://localhost:8787`. Vite's `base` is `/` in
   dev and `process.env.BASE_PATH ?? '/'` in builds; CI sets `BASE_PATH=/class-board/`.
 - **Tests never use the real network.** Link checks use an injected `fetch`, and screenshots
-  use a fake `Shooter`.
+  use a fake `Shooter`. `web/vitest.config.ts` turns off happy-dom's child-frame navigation,
+  because happy-dom 20 otherwise fetches every attached `<iframe src>` for real.
+- **Test filters match paths case-insensitively as substrings.** When a bare name could match
+  another file (`panel` matches `peoplePanel` and `teacherPanel`; `board` matches every
+  `board.*` file), pass the path instead: `npm test -w web -- test/panel.test.ts`.
+- **Web timers:** Node's types are visible in `web`, so a bare `setTimeout` returns
+  `NodeJS.Timeout` and `const t: number = setTimeout(…)` fails `tsc`. Use `window.setTimeout`
+  / `window.clearTimeout` or `ReturnType<typeof setTimeout>`.
+- **TypeScript 7** (the native compiler) is pinned. It has no `baseUrl`; any `paths` must start with `./`.
 - **Shell:** commands are written for Git Bash on Windows. npm scripts are cross-platform.
+  Git Bash rewrites `BASE_PATH=/class-board/` into a Windows path, so local production builds
+  need `MSYS_NO_PATHCONV=1 BASE_PATH=/class-board/ npm run build -w web`. CI on Linux is unaffected.
 
 ---
 
@@ -352,8 +366,9 @@ The Board Durable Object (W2–W4) owns `worker/src/board.ts`, `worker/src/index
 - `export class Board extends Server<Env>` from `partyserver`, exported from `worker/src/index.ts`.
   Binding `Board`, so the party name is `board`.
 - WebSocket: `/parties/board/<board>`, through `routePartykitRequest`.
-- HTTP: `POST /boards/<board>/files`, `GET /boards/<board>/files/<id>`, `GET /boards/<board>/shots/<id>`
-  (the Worker forwards them to the board's Durable Object with `getServerByName`), plus CORS preflight.
+- HTTP: `POST /boards/<board>/files`, `GET /boards/<board>/files/<id>`, `GET /boards/<board>/shots/<id>`,
+  plus CORS preflight. The Worker forwards them with `env.Board.get(env.Board.idFromName(board)).fetch(request)`.
+  That's one Durable Object call; `getServerByName` would make two, which counts against the free daily limit.
 - Board names are checked against `BOARD_NAME_RE`; anything else gets a 404.
 - Upload response: `200 {"fileId": "<32 hex>"}`. Errors: `413 {"error":"too_large"}`,
   `400 {"error":"invalid"}`, `429 {"error":"rate_limited"}`, `403 {"error":"origin"}`.
@@ -368,7 +383,7 @@ modules from other workstreams; everything else imports types from `web/src/cont
 |---|---|
 | `web/src/config.ts` (U7) | `SERVER_URL: string`, `BOARD: string` (from `?board=`, validated with `BOARD_NAME_RE`, default `DEFAULT_BOARD`), `BOARD_ORIGIN: string` (`location.origin`), `IS_DEV: boolean` |
 | `web/src/util/url.ts` (U1) | `serverHref(serverUrl: string, path: string): string`: absolute URLs pass through, server-relative paths are resolved against `serverUrl` |
-| `web/src/util/emitter.ts` (U1) | `createEmitter<E extends Record<string, unknown>>(): Emitter<E>` with `on(k, fn): Unsubscribe`, `emit(k, payload)`, `clear()` |
+| `web/src/util/emitter.ts` (U1) | `createEmitter<E extends object>(): Emitter<E>` with `on(k, fn): Unsubscribe`, `emit(k, payload)` (the payload is optional when its type includes `undefined`), `clear()`. The constraint is `object`, not `Record<string, unknown>`, so interfaces such as `BoardStateEvents` fit. |
 | `web/src/ui/dom.ts` (U1) | `h(tag, props?, ...children)`. `props` keys: `class`, `dataset` (object), `style` (object), `attrs` (object), `on` (object of listeners), plus any direct DOM property such as `type`, `value`, `hidden`, `disabled` or `textContent`. Children: `Node \| string \| number \| null \| undefined \| false`. Also `clear(el: Element): void`. |
 | `web/src/ui/modal.ts` (U1) | `openModal(opts: { title: string; body: HTMLElement; dialog: string; onClose?: () => void; closable?: boolean }): { el: HTMLElement; close(): void }`. Renders `.modal[data-dialog=<dialog>]` into `#modal-root` with a `[data-action="close"]` button. Esc or the backdrop closes it unless `closable === false`. At most one modal is open; opening another closes the first. |
 | `web/src/ui/banner.ts` (U1) | `showBanner(id: string, text: string, kind?: 'info' \| 'warn' \| 'error'): void`, `hideBanner(id: string): void`. Renders `#banner [data-banner=<id>]`. |
@@ -596,7 +611,7 @@ handle (§5.4).
 |---|---|---|---|---|---|
 | 1 | F1 | Scaffold workspaces, install all deps, configs, smoke tests | T2 | root `package.json`, `package-lock.json`, `tsconfig.base.json`, `.gitignore`, `.gitattributes`, `.editorconfig`, `.nvmrc`; `shared/{package.json,tsconfig.json,vitest.config.ts,test/smoke.test.ts}`; `worker/{package.json,tsconfig.json,vitest.config.ts,vitest.unit.config.ts,wrangler.jsonc,.dev.vars.example,test/env.d.ts,test/smoke.test.ts,test/unit/smoke.test.ts,src/index.ts}`; `web/{package.json,tsconfig.json,vite.config.ts,vitest.config.ts,src/vite-env.d.ts,test/smoke.test.ts}`; `e2e/{package.json,tsconfig.json}` | 01-foundation.md |
 | 1 | F2 | Contract files (after F1) | T0 | `shared/src/constants.ts`, `shared/src/types.ts`, `worker/src/env.ts`, `web/src/contracts.ts`, `shared/test/constants.test.ts` | this file, §8 |
-| 2 | F3 | Slot names and geometry | T0 | `shared/src/slots.ts`, `shared/test/slots.test.ts` | 01-foundation.md |
+| 1 | F3 | Slot names and geometry (after F2; U2 needs it in wave 2) | T0 | `shared/src/slots.ts`, `shared/test/slots.test.ts` | 01-foundation.md |
 | 2 | F4 | Link planning and rewrites | T1 | `shared/src/urls.ts`, `shared/test/urls.test.ts` | 01-foundation.md |
 | 2 | F5 | Pixel-art codec and message validation | T1 | `shared/src/pixelArt.ts`, `shared/src/protocol.ts`, `shared/test/pixelArt.test.ts`, `shared/test/protocol.test.ts` | 01-foundation.md |
 | 2 | W1 | BoardStore (SQLite) | T2 | `worker/src/store.ts`, `worker/test/store.test.ts` | 02-worker-core.md |
@@ -610,7 +625,6 @@ handle (§5.4).
 | 2 | U4 | Board state | T1 | `web/src/state/boardState.ts`, `web/test/boardState.test.ts` | 04-web-core-a.md |
 | 2 | T1 | chooseLive (pure selection) | T2 | `web/src/board/chooseLive.ts`, `web/test/chooseLive.test.ts` | 06-web-tiles.md |
 | 2 | C1 | Throttle and interpolation | T1 | `web/src/cursors/throttle.ts`, `web/src/cursors/interpolate.ts`, `web/test/throttle.test.ts`, `web/test/interpolate.test.ts` | 07-web-cursors.md |
-| 2 | C3 | Profile storage | T0 | `web/src/profile/storage.ts`, `web/test/storage.test.ts` | 07-web-cursors.md |
 | 3 | X5 | Link check | T2 | `worker/src/linkCheck.ts`, `worker/test/unit/linkCheck.test.ts` | 03-worker-leaves.md |
 | 3 | X6 | Screenshot queue | T2 | `worker/src/shots.ts`, `worker/test/unit/shots.test.ts` | 03-worker-leaves.md |
 | 3 | W2 | Board Durable Object core: connect, hello, snapshot, profile, cursors, presence, budget, WS routing | T4 | `worker/src/board.ts`, `worker/src/index.ts`, `worker/test/board.session.test.ts`, `worker/test/helpers.ts` | 02-worker-core.md |
@@ -621,6 +635,7 @@ handle (§5.4).
 | 3 | C2 | Cursor images | T2 | `web/src/cursors/render.ts`, `web/test/render.test.ts` | 07-web-cursors.md |
 | 3 | C4 | Pixel editor | T2 | `web/src/profile/pixelEditor.ts`, `web/src/profile/pixelEditor.css`, `web/test/pixelEditor.test.ts` | 07-web-cursors.md |
 | 3 | C5 | Teacher session | T1 | `web/src/teacher/teacher.ts`, `web/test/teacher.test.ts` | 07-web-cursors.md |
+| 3 | C3 | Profile storage (imports F5, so wave 3) | T0 | `web/src/profile/storage.ts`, `web/test/storage.test.ts` | 07-web-cursors.md |
 | 4 | W3 | Tile edits: post, rename, restore, history, lock, clear, reset cursor | T3 | `worker/src/tiles.ts`, `worker/src/board.ts`, `worker/test/board.tiles.test.ts` | 02-worker-core.md |
 | 4 | U8 | main.ts stage 1: board, camera, grid, socket, top bar | T2 | `web/src/main.ts` | 05-web-core-b.md |
 | 4 | T3 | Post dialog | T2 | `web/src/tiles/postDialog.ts`, `web/src/tiles/postDialog.css`, `web/test/postDialog.test.ts` | 06-web-tiles.md |
@@ -1263,3 +1278,58 @@ git commit -m "feat(contracts): shared constants, wire types, worker env, web in
    the owner's Cloudflare account). It's checked at first deploy (runbook in
    `08-e2e-launch.md`). Fallback: the REST `/screenshot` endpoint called with an API token.
 3. **PartyServer hibernation with connection state:** covered by W2's tests.
+
+## 11. Decisions made while assembling the plan
+
+The eight plan agents raised these points, and the orchestrator settled them. The workstream
+files already reflect each one.
+
+**Tooling**
+- `@cloudflare/vitest-plugin` 1.3.3 replaces `@cloudflare/vitest-pool-workers` (see §2).
+  Pinned versions are in `01-foundation.md` F1: TypeScript 7.0.2 (fall back to 6.0.3 only if a
+  compiler incompatibility shows up), Vitest 4.1.11, Vite 8.3.1, wrangler 4.144.0, partyserver
+  0.5.10, partysocket 1.3.0, valibot 1.5.0, happy-dom 20.14.5, Playwright 1.63.0.
+- `npm audit` reports 3 high findings through `@cloudflare/puppeteer`'s `extract-zip`, which
+  isn't bundled into the Worker. Never run `npm audit fix --force`; it downgrades puppeteer to 0.0.11.
+
+**Schedule**
+- F3 moved to Wave 1, because U2 imports it.
+- C3 moved to Wave 3, because it imports F5.
+
+**Security and cost**
+- `TeacherGate` never accepts anything when `TEACHER_CODE` is empty (X3). Otherwise a missing
+  secret would let anyone in with an empty passcode.
+- File and screenshot requests are forwarded with `idFromName` (§4), which is one Durable
+  Object call instead of two.
+- Connection ids come from the client (`?_pk=`) and can't be trusted. W2 iterates
+  `getConnections()` rather than calling `getConnection(id)`, so a duplicate id can't crash it.
+  This is accepted for a class of known students.
+- `TeacherGate` is keyed by connection id, so reconnecting resets the wrong-try count. Accepted.
+
+**Behavior** (these changes and deviations from the briefs are accepted)
+- Focus mode never opens an empty tile, whether by zooming or through a `#A1` link (T5).
+- Leaving focus mode through the browser's back or forward buttons leaves history alone (T5).
+- The names above tiles scale with a `--cam-s` CSS variable that `main.ts` sets on `#world`, so
+  they stay readable on the zoomed-out overview (U6 `grid.css`, U8/U9 `applyCamera`).
+- Newer Claude artifacts (`claude.ai/artifact/…`) get no screenshot (`shotTarget` returns null).
+  A browser without an account only sees a sign-in page.
+- Upload titles fall back to "HTML page", not the file name (spec §5.8 updated).
+- Edit checks run in this order: locked → rate limited → conflict → content validation.
+  - Renaming to an empty label, or renaming an empty tile, → `invalid`.
+  - History stays available on a locked board.
+  - A cleared tile shows no author; the history does.
+- A tap on an empty tile opens the post dialog for the teacher even when the board is locked
+  (matching Grid, which shows the teacher the Add button). Empty tiles have no rename button.
+- Remote cursors parked on a tile don't fade when idle. A first-time profile starts with a
+  random color, so the class doesn't all start the same.
+- The `limit` banner appears for an unsolicited `error` with code `full`.
+  `InputHandlers.pointerLeft` is a no-op.
+- There are two "Blank? Open in new tab" hints: the Grid card's, and LiveFrames' over a live
+  frame. Only one is visible at a time, because the card is hidden while the tile is live. In
+  e2e, target the toolbar's open button as `.tile-actions [data-action="open"]`.
+- Cursor images are SVG data URLs, not PNGs (spec §6.3 updated).
+
+**Process**
+- e2e doesn't run in CI yet; `pages.yml` only builds and deploys.
+- `build/v1` is merged into `main` before the first push, because Pages deploys from `main`.
+- The orchestrator's commit trailer is `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

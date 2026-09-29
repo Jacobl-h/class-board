@@ -277,7 +277,8 @@ focus-mode tile are always live and don't count toward the cap. A live tile whos
 
 - One file (`.html` or `.htm`, or pasted text), UTF-8, up to 1 MB. It must contain `<`.
   Stored exactly as uploaded.
-- An upload's tile title is its `<title>`, falling back to the file name, then "HTML page".
+- An upload's tile title is its `<title>`, falling back to "HTML page". The file name isn't
+  stored, so it can't be used as a fallback.
   Its `embeddable` is always `yes`.
 - Served at `GET /boards/<board>/files/<id>` with:
   - `Content-Type: text/html; charset=utf-8`
@@ -328,8 +329,9 @@ focus-mode tile are always live and don't count toward the cap. A live tile whos
 
 ### 6.3 Your own cursor
 
-- The board sets CSS `cursor: url(<32×32 PNG data URL>) <tipX> <tipY>, auto`. Shapes are
-  drawn from SVG; pixel art is scaled up 2×. So you see your own design with no delay.
+- The board sets CSS `cursor: url(<32×32 SVG data URL>) <tipX> <tipY>, auto`. Shapes and pixel
+  art (scaled up 2×) are both drawn as SVG, with no canvas, so you see your own design with no
+  delay. Chromium accepts SVG cursors; Firefox and Safari are checked during e2e.
 - Over an in-use or focus-mode iframe, the embedded page controls the cursor (a browser rule).
 
 ### 6.4 Sending your position
@@ -493,7 +495,7 @@ Implementation follows test-driven development, one task at a time as set out in
 
 - **shared:** Vitest unit tests for slot names, URL normalization and rewrites, the pixel-art
   codec and message validation.
-- **worker:** Vitest with `@cloudflare/vitest-pool-workers`, which runs in Cloudflare's local
+- **worker:** Vitest with `@cloudflare/vitest-plugin`, which runs in Cloudflare's local
   runtime (workerd). Covers:
   - all the header combinations in `frameHeaders`
   - link checks against a mocked `fetch`
