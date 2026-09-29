@@ -1,0 +1,188 @@
+.people-panel {
+  position: fixed;
+  z-index: var(--z-banner, 25);
+  width: min(320px, calc(100vw - 16px));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  font-family: var(--font, system-ui, sans-serif);
+}
+
+.people-head {
+  padding: 10px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.people-list {
+  margin: 0;
+  padding: 0 4px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.person-jump {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'swatch name you'
+    'swatch presence presence';
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.person-jump:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.person-swatch {
+  grid-area: swatch;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.person-name {
+  grid-area: name;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.person-you {
+  grid-area: you;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.person-you[hidden],
+.person-reset[hidden] {
+  display: none;
+}
+
+.person-presence {
+  grid-area: presence;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.person-reset {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.people-foot {
+  padding: 6px 12px 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+
+.people-teacher {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.teacher-panel {
+  display: grid;
+  gap: 12px;
+  min-width: min(320px, 100%);
+}
+
+.teacher-panel input[name='code'] {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.teacher-panel .profile-field {
+  display: grid;
+  gap: 6px;
+}
+
+.teacher-panel .profile-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.teacher-help {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.teacher-panel .dialog-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.teacher-panel .dialog-error[hidden] {
+  display: none;
+}
+
+.teacher-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.teacher-actions button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.teacher-actions .teacher-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.teacher-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture page</title>
+  </head>
+  <body>
+    <p id="ran">not run</p>
+    <p id="result">pending</p>
+    <script>
+      document.getElementById('ran').textContent = 'ran';
+      var result;
+      try {
+        localStorage.setItem('x', '1');
+        result = 'storage';
+      } catch (e) {
+        result = 'blocked';
+      }
+      document.title = result;
+      document.getElementById('result').textContent = result;
+    </script>
+  </body>
+</html>

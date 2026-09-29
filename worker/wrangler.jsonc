@@ -1,0 +1,18 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "class-board",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "Board", "class_name": "Board" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Board"] }],
+  "browser": { "binding": "BROWSER" },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://jacobl-h.github.io,http://localhost:5173",
+    "BOARD_ORIGIN": "https://jacobl-h.github.io",
+    "PUBLIC_URL": "http://localhost:8787",
+    "DAILY_MESSAGE_BUDGET": "2000000"
+  }
+}

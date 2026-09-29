@@ -1,0 +1,276 @@
+/* Tiles, labels, cards and hover buttons (Grid). .tile-frame belongs to frames.css, focus mode to focus.css. */
+
+.tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+}
+
+.tile:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* Label strip: 32 board units above the tile body. */
+.tile-label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 2px 4px;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tile-name {
+  overflow: hidden;
+  max-width: 340px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  /* --cam-s is the camera scale, set on #world by main.ts. Zoomed out, names grow in board
+     units, up to what fits the 32-unit strip, so they stay readable on the overview. */
+  font-size: clamp(18px, calc(12px / var(--cam-s, 1)), 26px);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-name:hover:not(:disabled) {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.tile-name:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.tile-name-input {
+  width: 260px;
+  height: 26px;
+  padding: 2px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tile-slot {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.tile-badge {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Tile body: exactly 480×300, so a 1280×800 iframe at scale 0.375 fills it. The outline is a
+   shadow rather than a border so it doesn't take space from the frame. */
+.tile-body {
+  position: relative;
+  flex: none;
+  width: 480px;
+  height: 300px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.tile.is-empty .tile-body {
+  background: transparent;
+  box-shadow: none;
+  outline: 2px dashed var(--border);
+  outline-offset: -2px;
+}
+
+/* Grid owns the card: empty, checking, and the screenshot or title card. */
+.tile-card {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tile-add {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.tile-add:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+}
+
+.tile-checking {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.tile-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: tile-spin 0.8s linear infinite;
+}
+
+@keyframes tile-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+.tile-shot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  -webkit-user-drag: none;
+}
+
+.tile-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 24px 28px;
+}
+
+.tile-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.tile-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tile-domain {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Over a screenshot the note sits on a strip at the bottom; on a title card it flows below. */
+.tile-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.tile-hint {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Hover buttons: shown on hover and while anything in the tile has keyboard focus. */
+.tile-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.tile:hover .tile-actions,
+.tile:focus-within .tile-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tile-action {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tile-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tile-action[data-action='clear']:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Focus mode's Back button; focus.ts un-hides it, focus.css places it in the top layer. */
+.focus-back {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.tile.is-blocked .tile-shot {
+  filter: saturate(0.85);
+}

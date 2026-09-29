@@ -1,0 +1,43 @@
+/* #cursor-layer itself (position, pointer-events, z-index) is styled in base.css. */
+
+.cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition: opacity 0.4s ease;
+}
+
+.cursor[hidden] {
+  display: none;
+}
+
+.cursor-img {
+  position: absolute;
+  display: block;
+  width: 32px;
+  height: 32px;
+  max-width: none;
+  user-select: none;
+}
+
+.cursor-tag {
+  position: absolute;
+  left: 14px;
+  top: 20px;
+  max-width: 220px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 12px/1.4 var(--font, system-ui, sans-serif);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.cursor.is-idle .cursor-tag {
+  display: none;
+}

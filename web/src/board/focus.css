@@ -1,0 +1,101 @@
+/* Focus mode: the tile's .tile-body is promoted to the top layer with popover="manual". */
+
+.tile-body:popover-open {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  border-radius: 0;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.tile-body:popover-open::backdrop {
+  background: transparent;
+}
+
+.tile-body:popover-open .tile-frame {
+  position: absolute;
+  inset: 0;
+}
+
+.tile-body:popover-open iframe {
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+/* The page is fully usable in focus mode, so there's no shield. */
+.tile-body:popover-open .tile-shield {
+  display: none;
+}
+
+.focus-back {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: 600 14px/1.4 var(--font);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+
+.focus-back[hidden] {
+  display: none;
+}
+
+.tile.is-focus .tile-label,
+.tile.is-focus .tile-actions {
+  visibility: hidden;
+}
+
+/* A tile that can't run live: its card fills the page, with Open in new tab centred. */
+.tile.is-focus:not(.is-live) .tile-card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  visibility: visible;
+}
+
+.tile.is-focus:not(.is-live) .tile-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tile.is-focus:not(.is-live) .tile-actions {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: visible;
+  opacity: 1;
+  background: transparent;
+  pointer-events: none;
+}
+
+.tile.is-focus:not(.is-live) .tile-actions > * {
+  display: none;
+}
+
+.tile.is-focus:not(.is-live) .tile-actions > [data-action="open"] {
+  display: inline-flex;
+  padding: 10px 20px;
+  font-size: 16px;
+  pointer-events: auto;
+}

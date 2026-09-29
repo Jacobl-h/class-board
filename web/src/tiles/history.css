@@ -1,0 +1,105 @@
+/* The history dialog (.modal[data-dialog="history"]). */
+
+.history-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: min(520px, 90vw);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.history-status {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.history-status[hidden],
+.history-body .dialog-error[hidden] {
+  display: none;
+}
+
+.history-body .dialog-error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.history-row.is-current {
+  border-color: var(--accent);
+}
+
+.history-thumb {
+  width: 96px;
+  height: 60px;
+  border-radius: calc(var(--radius) / 2);
+  background: var(--bg);
+  object-fit: cover;
+}
+
+.history-thumb.is-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.history-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.history-title {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-label,
+.history-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.history-current {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.history-restore {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.history-restore:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

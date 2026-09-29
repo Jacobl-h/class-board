@@ -1,0 +1,146 @@
+.profile-panel {
+  display: grid;
+  gap: 14px;
+  min-width: min(360px, 100%);
+}
+
+.profile-field {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.profile-panel input[name='name'] {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.profile-panel .dialog-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.profile-panel .dialog-error[hidden] {
+  display: none;
+}
+
+.profile-swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.profile-swatch {
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+}
+
+.profile-swatch.is-selected {
+  border-color: var(--text);
+  outline: 2px solid var(--surface);
+  outline-offset: -4px;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-tab {
+  font: inherit;
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.profile-tab.is-selected {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.profile-tabpanel[hidden] {
+  display: none;
+}
+
+.profile-shapes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.profile-shape {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.profile-shape svg {
+  width: 40px;
+  height: 40px;
+}
+
+.profile-shape.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.profile-preview {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.profile-preview-img {
+  width: 32px;
+  height: 32px;
+}
+
+.profile-preview-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: 600 12px/1.4 var(--font, system-ui, sans-serif);
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.profile-save {
+  font: inherit;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "class-board",
+  "private": true,
+  "workspaces": ["shared", "worker", "web", "e2e"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:worker": "npm run dev -w worker",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "e2e": "npm run e2e -w e2e"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "typescript": "7.0.2"
+  }
+}

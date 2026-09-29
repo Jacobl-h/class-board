@@ -1,0 +1,25 @@
+{
+  "name": "@class-board/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "npm run test:unit && npm run test:do",
+    "test:do": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@class-board/shared": "*",
+    "@cloudflare/puppeteer": "1.4.0",
+    "partyserver": "0.5.10"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.3.3",
+    "@cloudflare/workers-types": "5.20260929.1",
+    "vitest": "4.1.11",
+    "wrangler": "4.144.0"
+  }
+}

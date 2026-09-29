@@ -1,0 +1,143 @@
+/* The post / replace dialog (.modal[data-dialog="post"]). */
+
+.post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: min(480px, 90vw);
+}
+
+.post-warning {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--text);
+}
+
+.post-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.post-tab {
+  padding: 6px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.post-tab.is-selected {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.post-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-panel[hidden] {
+  display: none;
+}
+
+.post-form input[type='url'],
+.post-form input[type='text'],
+.post-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.post-form textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.link-preview {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.link-preview[data-tone='warn'] {
+  color: var(--text);
+}
+
+.link-preview[data-tone='error'] {
+  color: var(--danger);
+}
+
+.post-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  text-align: center;
+  cursor: pointer;
+}
+
+.modal[data-dialog='post'].is-dragging .post-drop {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.post-file-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.post-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.post-form .dialog-error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.post-form .dialog-error[hidden] {
+  display: none;
+}
+
+.post-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.post-submit {
+  padding: 8px 20px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font: 600 14px/1.4 var(--font);
+  cursor: pointer;
+}
+
+.post-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

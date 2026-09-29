@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="A shared board for the class: post a link or an HTML page into a tile." />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23378ADD'/%3E%3Cpath fill='%23fff' d='M7 7h8v8H7zM17 7h8v8h-8zM7 17h8v8H7zM17 17h8v8h-8z'/%3E%3C/svg%3E"
+    />
+    <title>Class board</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar"></header>
+      <main id="viewport">
+        <div id="world"><div id="tiles"></div></div>
+        <div id="cursor-layer"></div>
+        <div id="hint"></div>
+      </main>
+      <div id="banner"></div>
+      <div id="modal-root"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
