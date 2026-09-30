@@ -246,3 +246,23 @@ describe('screenshots', () => {
     expect(await inBoard(board, (b) => b.store.nextShotAt())).toBeNull();
   });
 });
+
+describe('link check retry', () => {
+  it('tries a failed link check once more before settling on unknown', async () => {
+    const board = uniqueBoard();
+    const a = await openClient(board);
+    await hello(a, 'Ana');
+    let calls = 0;
+    await inBoard(board, (b) => b.setSeams({
+      fetchImpl: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error('cold connection timed out');
+        return page();
+      },
+    }));
+    postLink(a, 41, 'https://slow.example/');
+    const checked = await tileWhere(a, 41, (v) => v.embeddable !== 'pending');
+    expect(checked.embeddable).toBe('yes');
+    expect(checked.title).toBe('Example page');
+  });
+});

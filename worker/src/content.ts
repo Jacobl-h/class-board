@@ -77,8 +77,11 @@ export function afterPost(host: ContentHost, row: VersionRow): void {
 }
 
 async function checkAndUpdate(host: ContentHost, row: VersionRow, embedUrl: string): Promise<void> {
-  const result = await checkLink(embedUrl, host.env.BOARD_ORIGIN, host.fetchImpl)
+  const check = () => checkLink(embedUrl, host.env.BOARD_ORIGIN, host.fetchImpl)
     .catch(() => ({ embeddable: 'unknown' as const, title: null, icon: null }));
+  let result = await check();
+  // A cold connection can miss the time limit once; a second try usually gets the real answer.
+  if (result.embeddable === 'unknown') result = await check();
   let note: string | null = null;
   if (result.embeddable === 'no') {
     const plan = row.url ? planLink(row.url) : null;
