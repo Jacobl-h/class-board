@@ -8,7 +8,9 @@ test('a cursor moved in one window appears and follows in another', async ({ bro
 
   const aId = await myId(a.page);
   expect(aId).toBeTruthy();
-  const cursor = b.page.locator(`#cursor-layer .cursor[data-person="${aId}"]`);
+  const cursorEl = b.page.locator(`#cursor-layer .cursor[data-person="${aId}"]`);
+  // .cursor is a zero-size anchor (Playwright counts that as hidden); its image is what you see.
+  const cursor = cursorEl.locator('.cursor-img');
 
   const box = (await a.page.locator('#viewport').boundingBox())!;
   const y = box.y + box.height * 0.5;
@@ -18,7 +20,7 @@ test('a cursor moved in one window appears and follows in another', async ({ bro
   // Ana moves over the left side of the board; Ben's screen shows her cursor with her name.
   await sweepMouse(a.page, left, y - 40, left + 30, y);
   await expect(cursor).toBeVisible();
-  await expect(cursor.locator('.cursor-tag')).toContainText('Ana');
+  await expect(cursorEl.locator('.cursor-tag')).toContainText('Ana');
 
   // Let the smoothing (about 200 ms behind real time) settle, then note where it is.
   await a.page.waitForTimeout(600);

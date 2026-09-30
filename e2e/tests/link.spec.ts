@@ -28,5 +28,6 @@ test('a public link is posted, checked and shown live @network', async ({ page }
   // example.com allows framing, so zoomed in it runs live.
   await zoomToSlot(page, 0);
   await expect(tile).toHaveClass(/is-live/);
-  await expect(liveFrame(page, 0).locator('h1')).toHaveText('Example Domain', { timeout: 30_000 });
+  // example.com's 2025 page has no heading; its one paragraph is stable.
+  await expect(liveFrame(page, 0).locator('body')).toContainText('documentation examples', { timeout: 30_000 });
 });

@@ -4,8 +4,11 @@ import type { SlotIndex } from '@class-board/shared/types';
 import type { FocusApi, FocusDeps, Unsubscribe } from '../contracts';
 import './focus.css';
 
-/** A gap longer than this between blocked zoom-ins restarts the hold. */
-const HOLD_GAP_MS = 250;
+/**
+ * A gap longer than this between blocked zoom-ins restarts the hold. It matches the hint's
+ * lifetime, so slow mouse-wheel notches (often 300–500 ms apart) still count as one push.
+ */
+const HOLD_GAP_MS = 600;
 /** The "Keep zooming" hint hides after this long without blocked zoom-ins. */
 const HINT_HIDE_MS = 600;
 

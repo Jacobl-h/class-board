@@ -392,11 +392,20 @@ describe('createFocus: zooming past the maximum', () => {
     expect(f.current()).toBe(D6);
   });
 
-  it('restarts the hold after a gap of more than 250 ms', () => {
+  it('keeps the hold through slow wheel notches up to 600 ms apart', () => {
     vi.useFakeTimers();
     const f = start();
     f.zoomBlocked(C4);
-    vi.advanceTimersByTime(251);
+    vi.advanceTimersByTime(400);
+    f.zoomBlocked(C4);
+    expect(f.current()).toBe(C4);
+  });
+
+  it('restarts the hold after a gap of more than 600 ms', () => {
+    vi.useFakeTimers();
+    const f = start();
+    f.zoomBlocked(C4);
+    vi.advanceTimersByTime(601);
     f.zoomBlocked(C4);
     vi.advanceTimersByTime(200);
     f.zoomBlocked(C4);
