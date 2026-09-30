@@ -12,7 +12,7 @@
   "vars": {
     "ALLOWED_ORIGINS": "https://jacobl-h.github.io,http://localhost:5173",
     "BOARD_ORIGIN": "https://jacobl-h.github.io",
-    "PUBLIC_URL": "http://localhost:8787",
+    "PUBLIC_URL": "https://class-board.jacobylehrer.workers.dev",
     "DAILY_MESSAGE_BUDGET": "2000000"
   }
 }
