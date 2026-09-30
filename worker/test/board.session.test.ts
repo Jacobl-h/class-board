@@ -102,6 +102,24 @@ describe('people', () => {
     expect(await a.next('personLeft')).toEqual({ type: 'personLeft', id: b.id });
   });
 
+  it('keeps a person who reconnected with the same id when the old socket closes late', async () => {
+    const board = uniqueBoard();
+    const a = await openClient(board);
+    await hello(a, 'Ana');
+    // PartySocket reuses its _pk across reconnects, so the replacement carries the same id.
+    const old = await openClient(`${board}?_pk=student-1`);
+    await hello(old, 'Ben');
+    const fresh = await openClient(`${board}?_pk=student-1`);
+    const snap = await hello(fresh, 'Ben');
+    expect(fresh.id).toBe('student-1');
+    expect(snap.people.filter((p) => p.id === 'student-1')).toHaveLength(1);
+    old.close();
+    await sleep(150);
+    expect(a.all('personLeft')).toEqual([]);
+    fresh.close();
+    expect(await a.next('personLeft')).toEqual({ type: 'personLeft', id: 'student-1' });
+  });
+
   it('does not announce a connection that never said hello', async () => {
     const board = uniqueBoard();
     const a = await openClient(board);

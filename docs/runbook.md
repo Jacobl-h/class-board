@@ -257,9 +257,16 @@ feature just stops working until the limits reset at **00:00 UTC** (in the eveni
 | Durable Object storage writes (100,000 rows a day) | Posts and edits fail with an error in the dialog. A normal class uses a tiny fraction. |
 
 A normal 75-minute class uses about a third of the message budget. If cursors pause partway
-through a class, cursors return at midnight UTC. Opening a second board doesn't help, because the
-budget is per Worker, not per board. To reduce the load, ask students to keep their mouse still
-when they aren't using the board.
+through a class, cursors return at midnight UTC. To reduce the load, ask students to keep their
+mouse still when they aren't using the board.
+
+**The message budget is per board, but Cloudflare's limit is per account.** Each board
+(`?board=…`) counts its own 2,000,000 messages, while the 100,000 Durable Object requests a day
+are shared by every board on your Cloudflare account. If you run several boards on the same UTC
+day (for example `?board=period-1` and `?board=period-2`), lower `DAILY_MESSAGE_BUDGET` in
+`worker/wrangler.jsonc` so the boards' budgets add up to about 2,000,000 at most (for example
+`"1000000"` each for two boards), then run `npm run deploy -w worker`. Otherwise the account can
+hit Cloudflare's limit before either board slows its cursors down.
 
 ## Troubleshooting
 

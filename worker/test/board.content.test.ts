@@ -116,6 +116,62 @@ describe('uploads and files', () => {
     expect((await upload(board, '<p>ok</p>', { 'CF-Connecting-IP': '198.51.100.2' })).status).toBe(200);
   });
 
+  it('limits uploads per client, so a class behind one IP can all upload at once', async () => {
+    const board = uniqueBoard();
+    await inBoard(board, (b) => b.setSeams({ now: () => 7_100_000 }));
+    const from = (clientId: string) => ({ 'CF-Connecting-IP': '198.51.100.20', 'X-Client-Id': clientId });
+    for (let i = 0; i < 5; i++) expect((await upload(board, '<p>ok</p>', from('student-a'))).status).toBe(200);
+    expect((await upload(board, '<p>ok</p>', from('student-a'))).status).toBe(429);
+    for (let i = 0; i < 5; i++) expect((await upload(board, '<p>ok</p>', from('student-b'))).status).toBe(200);
+  });
+
+  it('limits by IP alone when the client id is missing or malformed', async () => {
+    const board = uniqueBoard();
+    await inBoard(board, (b) => b.setSeams({ now: () => 7_200_000 }));
+    const ip = { 'CF-Connecting-IP': '198.51.100.21' };
+    for (let i = 0; i < 3; i++) expect((await upload(board, '<p>ok</p>', ip)).status).toBe(200);
+    for (let i = 0; i < 2; i++) expect((await upload(board, '<p>ok</p>', { ...ip, 'X-Client-Id': 'bad id!' })).status).toBe(200);
+    expect((await upload(board, '<p>ok</p>', { ...ip, 'X-Client-Id': 'x'.repeat(65) })).status).toBe(429);
+    expect((await upload(board, '<p>ok</p>', ip)).status).toBe(429);
+  });
+
+  it('caps uploads at 120 a minute per IP however many client ids it uses', async () => {
+    const board = uniqueBoard();
+    await inBoard(board, (b) => b.setSeams({ now: () => 7_300_000 }));
+    const from = (n: number) => ({ 'CF-Connecting-IP': '198.51.100.22', 'X-Client-Id': `c${n}` });
+    for (let i = 0; i < 120; i++) expect((await upload(board, '<p>ok</p>', from(Math.floor(i / 5)))).status).toBe(200);
+    expect((await upload(board, '<p>ok</p>', from(999))).status).toBe(429);
+    expect((await upload(board, '<p>ok</p>', { 'CF-Connecting-IP': '198.51.100.23', 'X-Client-Id': 'c999' })).status).toBe(200);
+  });
+
+  it('allows the X-Client-Id header in the CORS preflight', async () => {
+    const res = await SELF.fetch(`http://localhost/boards/${uniqueBoard()}/files`, {
+      method: 'OPTIONS',
+      headers: { Origin: ORIGIN, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'x-client-id' },
+    });
+    expect(res.headers.get('Access-Control-Allow-Headers')).toContain('X-Client-Id');
+  });
+
+  it('stops reading a body with no Content-Length once it passes 1 MB', async () => {
+    const chunk = new Uint8Array(64 * 1024).fill(0x61);
+    const total = 32 * 1024 * 1024;
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= total) {
+          controller.close();
+          return;
+        }
+        sent += chunk.byteLength;
+        controller.enqueue(chunk);
+      },
+    });
+    const res = await upload(uniqueBoard(), body, { 'CF-Connecting-IP': '198.51.100.24' });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: 'too_large' });
+    expect(sent).toBeLessThan(8 * 1024 * 1024);
+  });
+
   it('answers 404 for unknown or malformed ids and bad board names', async () => {
     const board = uniqueBoard();
     const urls = [
@@ -244,6 +300,70 @@ describe('screenshots', () => {
     postLink(a, 43, 'https://ok.example/');
     await tileWhere(a, 43, (v) => v.embeddable === 'yes');
     expect(await inBoard(board, (b) => b.store.nextShotAt())).toBeNull();
+  });
+});
+
+describe('rename and restore', () => {
+  it('checks a link that was renamed while its first check was still running', async () => {
+    const board = uniqueBoard();
+    const a = await openClient(board);
+    await hello(a, 'Ana');
+    const gates: Array<() => void> = [];
+    await inBoard(board, (b) => b.setSeams({
+      fetchImpl: () => new Promise<Response>((resolve) => gates.push(() => resolve(page()))),
+    }));
+    postLink(a, 50, 'https://renamed.example/');
+    const first = await tileWhere(a, 50, () => true);
+    await waitFor(() => gates.length === 1, 2000, 'first link check');
+    a.send({ type: 'rename', reqId: 'rn50', slot: 50, baseVersion: first.version, label: 'New name' });
+    const renamed = await tileWhere(a, 50, (v) => v.version !== first.version);
+    expect(renamed.embeddable).toBe('pending');
+    await waitFor(() => gates.length === 2, 2000, 'link check for the renamed version');
+    await inBoard(board, () => {
+      gates[0]!();
+      gates[1]!();
+    });
+    expect(await tileWhere(a, 50, (v) => v.embeddable === 'yes')).toMatchObject({ version: renamed.version, label: 'New name' });
+  });
+
+  it('screenshots a renamed or restored version that has no shot yet', async () => {
+    const board = uniqueBoard();
+    const a = await openClient(board);
+    await hello(a, 'Ana');
+    const fake = fakeShooter();
+    await inBoard(board, (b) => b.setSeams({ shooter: () => fake.shooter }));
+    const { fileId } = await (await upload(board, '<title>Page</title>')).json<{ fileId: string }>();
+    a.send({ type: 'post', reqId: 'html51', slot: 51, baseVersion: 0, content: { kind: 'html', fileId }, label: 'Page' });
+    const v1 = await tileWhere(a, 51, (v) => v.kind === 'html');
+    // Renamed before the alarm runs: v1's queued shot is dropped as stale, so v2 needs its own.
+    a.send({ type: 'rename', reqId: 'rn51', slot: 51, baseVersion: v1.version, label: 'Renamed' });
+    const v2 = await tileWhere(a, 51, (v) => v.version !== v1.version);
+    await runDurableObjectAlarm(stubFor(board));
+    expect(await tileWhere(a, 51, (v) => v.shotUrl !== null)).toMatchObject({ version: v2.version });
+
+    // v1 never got its picture, so restoring it needs one too.
+    a.send({ type: 'restore', reqId: 'rs51', slot: 51, baseVersion: v2.version, versionId: v1.version });
+    const v3 = await tileWhere(a, 51, (v) => v.version > v2.version);
+    expect(v3.shotUrl).toBeNull();
+    await runDurableObjectAlarm(stubFor(board));
+    expect(await tileWhere(a, 51, (v) => v.version === v3.version && v.shotUrl !== null)).toBeTruthy();
+    expect(fake.shots).toHaveLength(2);
+  });
+
+  it('screenshots a checked link that was renamed before its shot was taken', async () => {
+    const board = uniqueBoard();
+    const a = await openClient(board);
+    await hello(a, 'Ana');
+    const fake = fakeShooter();
+    await inBoard(board, (b) => b.setSeams({ fetchImpl: async () => page(), shooter: () => fake.shooter }));
+    postLink(a, 52, 'https://ok.example/renamed');
+    const checked = await tileWhere(a, 52, (v) => v.embeddable === 'yes');
+    a.send({ type: 'rename', reqId: 'rn52', slot: 52, baseVersion: checked.version, label: 'Renamed' });
+    const renamed = await tileWhere(a, 52, (v) => v.version !== checked.version);
+    expect(renamed).toMatchObject({ embeddable: 'yes', shotUrl: null });
+    await runDurableObjectAlarm(stubFor(board));
+    expect(await tileWhere(a, 52, (v) => v.shotUrl !== null)).toMatchObject({ version: renamed.version });
+    expect(fake.shots).toEqual(['https://ok.example/renamed']);
   });
 });
 

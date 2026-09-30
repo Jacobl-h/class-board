@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DailyLimitError, createBrowserShooter, runShotQueue, shotTarget, type ShotDeps, type Shooter,
+  DailyLimitError, allowShotRequest, createBrowserShooter, runShotQueue, shotTarget, type ShotDeps, type Shooter,
 } from '../../src/shots';
 import type { BoardStore, VersionRow } from '../../src/store';
 
@@ -444,5 +444,24 @@ describe('createBrowserShooter', () => {
   it('closes cleanly when it never connected', async () => {
     const { fetcher } = binding({});
     await expect(createBrowserShooter(fetcher).close()).resolves.toBeUndefined();
+  });
+});
+
+describe('allowShotRequest', () => {
+  const PAGE = 'https://site.example/';
+  it('allows ordinary public requests', () => {
+    expect(allowShotRequest('https://cdn.example/a.js', PAGE)).toBe(true);
+  });
+  it('blocks private, local and IP targets, including redirect hops', () => {
+    for (const u of ['http://127.0.0.1:8080/', 'http://192.168.1.1/', 'http://localhost/x', 'http://printer.local/', 'http://meta.internal/', 'http://[::1]/', 'ftp://site.example/'])
+      expect(allowShotRequest(u, PAGE)).toBe(false);
+  });
+  it('allows the origin of the page being shot, even on localhost', () => {
+    const dev = 'http://localhost:8787/boards/main/files/x';
+    expect(allowShotRequest('http://localhost:8787/other.css', dev)).toBe(true);
+    expect(allowShotRequest('http://localhost:9999/', dev)).toBe(false);
+  });
+  it('allows in-browser URLs', () => {
+    expect(allowShotRequest('data:image/png;base64,AAAA', PAGE)).toBe(true);
   });
 });

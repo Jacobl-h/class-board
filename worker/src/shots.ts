@@ -1,4 +1,5 @@
 import puppeteer, { type Browser } from '@cloudflare/puppeteer';
+import { planLink } from '@class-board/shared/urls';
 import { SHOTS } from '@class-board/shared/constants';
 import { newId } from './files';
 import { filePath, type BoardStore, type VersionRow } from './store';
@@ -115,6 +116,22 @@ export async function runShotQueue(deps: ShotDeps, maxJobs = 3): Promise<number 
   return store.nextShotAt();
 }
 
+/**
+ * Whether the screenshot browser may make this request. Anything planLink refuses (IP literals,
+ * localhost, .local, .internal, other schemes) is blocked, including redirect hops, except the
+ * origin of the page being photographed (uploads are shot from PUBLIC_URL, localhost in dev).
+ * data:, blob: and about: URLs never leave the browser.
+ */
+export function allowShotRequest(requestUrl: string, shootUrl: string): boolean {
+  if (/^(?:data|blob|about):/i.test(requestUrl)) return true;
+  try {
+    if (new URL(requestUrl).origin === new URL(shootUrl).origin) return true;
+  } catch {
+    return false;
+  }
+  return planLink(requestUrl).ok;
+}
+
 const DAILY_LIMIT_RE = /time limit exceeded/i;
 
 /**
@@ -154,6 +171,12 @@ export function createBrowserShooter(binding: Fetcher): Shooter {
         const b = await acquire();
         const page = await b.newPage();
         try {
+          await page.setRequestInterception(true);
+          page.on('request', (req) => {
+            if (req.isInterceptResolutionHandled()) return;
+            if (allowShotRequest(req.url(), url)) void req.continue().catch(() => {});
+            else void req.abort('blockedbyclient').catch(() => {});
+          });
           await page.setViewport({ width: SHOTS.viewportW, height: SHOTS.viewportH });
           try {
             await page.goto(url, { waitUntil: 'networkidle2', timeout: SHOTS.maxWaitMs });

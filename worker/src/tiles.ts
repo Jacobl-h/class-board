@@ -27,7 +27,7 @@ export interface TileHost {
   findPerson(id: string): { conn: BoardConn; state: ConnState } | null;
   /** Replaces part of a connection's state and broadcasts `person` `updated`. */
   updateState(conn: BoardConn, patch: Partial<ConnState>): ConnState;
-  /** Called after a successful post (W4 starts link checks and screenshots here). */
+  /** Called after a successful post, rename or restore (W4 starts link checks and screenshots here). */
   afterPost(row: VersionRow): void;
 }
 
@@ -118,7 +118,8 @@ function rename(host: TileHost, conn: BoardConn, state: ConnState, msg: Extract<
     host.fail(conn, msg.reqId, 'invalid');
     return;
   }
-  save(host, conn, msg.reqId, { ...copyOf(current), ...authored(state), label });
+  // The copy may still be waiting for a link check or a screenshot that the old version can't hand on.
+  host.afterPost(save(host, conn, msg.reqId, { ...copyOf(current), ...authored(state), label }));
 }
 
 function restore(host: TileHost, conn: BoardConn, state: ConnState, msg: Extract<TileMsg, { type: 'restore' }>): void {
@@ -128,7 +129,7 @@ function restore(host: TileHost, conn: BoardConn, state: ConnState, msg: Extract
     host.fail(conn, msg.reqId, 'not_found');
     return;
   }
-  save(host, conn, msg.reqId, { ...copyOf(old), ...authored(state) });
+  host.afterPost(save(host, conn, msg.reqId, { ...copyOf(old), ...authored(state) }));
 }
 
 function history(host: TileHost, conn: BoardConn, msg: Extract<TileMsg, { type: 'history' }>): void {

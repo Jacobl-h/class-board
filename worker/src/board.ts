@@ -7,9 +7,10 @@ import type {
 import { DailyBudget, type BudgetState } from './budget';
 import {
   afterPost as startContentChecks, createUploadLimiter, handleHttp, runAlarm, ShooterSession, type ContentHost,
+  type UploadLimiter,
 } from './content';
 import type { Env } from './env';
-import { createConnLimits, type ConnLimits, type KeyedLimiter } from './limits';
+import { createConnLimits, type ConnLimits } from './limits';
 import { createBrowserShooter, type Shooter } from './shots';
 import { BoardStore, toTileView, type VersionRow } from './store';
 import { TeacherGate } from './teacher';
@@ -94,7 +95,7 @@ export class Board extends Server<Env> {
   private teacherGate: TeacherGate | null = null;
   private host: TileHost | null = null;
   private shots: ShooterSession | null = null;
-  private uploads: KeyedLimiter | null = null;
+  private uploads: UploadLimiter | null = null;
 
   now(): number {
     return this.seams.now ? this.seams.now() : Date.now();
@@ -330,9 +331,15 @@ export class Board extends Server<Env> {
   }
 
   onClose(conn: BoardConn): void {
-    this.pending.delete(conn.id);
-    this.limits.delete(conn.id);
-    if (stateOf(conn)?.ready) this.broadcastReady({ type: 'personLeft', id: conn.id });
+    // PartySocket keeps its id across reconnects, so the old socket can close after its
+    // replacement has already said hello. getConnections() skips sockets that aren't open,
+    // so this finds only the replacement; the person, cursor and limits then belong to it.
+    const replaced = this.findPerson(conn.id) !== null;
+    if (!replaced) {
+      this.pending.delete(conn.id);
+      this.limits.delete(conn.id);
+      if (stateOf(conn)?.ready) this.broadcastReady({ type: 'personLeft', id: conn.id });
+    }
     let open = 0;
     for (const _c of this.getConnections()) open += 1;
     if (open === 0) this.budget.flush(true);
@@ -367,13 +374,14 @@ export class Board extends Server<Env> {
     return { id, clientId: s.clientId, profile: s.profile, presence: s.presence };
   }
 
+  /** Everyone who has said hello, once per id (a reconnect can briefly leave two sockets with one id). */
   protected people(): Person[] {
-    const out: Person[] = [];
+    const byId = new Map<string, Person>();
     for (const conn of this.getConnections()) {
       const s = stateOf(conn);
-      if (s?.ready) out.push(this.personOf(conn.id, s));
+      if (s?.ready) byId.set(conn.id, this.personOf(conn.id, s));
     }
-    return out;
+    return [...byId.values()];
   }
 
   protected send(conn: Connection, msg: ServerMsg): void {

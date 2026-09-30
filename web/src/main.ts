@@ -30,6 +30,8 @@ import { mountTopBar } from './ui/topBar';
 import { serverHref } from './util/url';
 
 const UNREACHABLE_AFTER_MS = 8_000;
+/** While the socket stays down, how often to re-probe the server over HTTP. */
+const PROBE_EVERY_MS = 30_000;
 
 function byId(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -78,7 +80,7 @@ function start(clientId: string, initial: Profile): void {
   const postDeps: PostDialogDeps = {
     socket,
     state,
-    upload: (html, fileName) => uploadHtml(SERVER_URL, BOARD, html, fileName),
+    upload: (html, fileName) => uploadHtml(SERVER_URL, BOARD, html, fileName, clientId),
     defaultLabel: () => current.name,
   };
   const historyDeps: HistoryDeps = {
@@ -131,12 +133,18 @@ function start(clientId: string, initial: Profile): void {
   localCursor = createLocalCursor({ viewport, socket });
   createRemoteCursors({ layer: cursorLayer, camera, state }).start();
 
+  /** The server last turned us away as full; its socket closes, and the probe must not relabel that. */
+  let boardFull = false;
+
   // Messages go to the state only after every subscriber above exists, so none misses the first snapshot.
   socket.onMessage((m: ServerMsg) => {
     state.apply(m);
     // Errors without a reqId aren't answers to a request, so no dialog will show them.
     if (m.type === 'error' && m.reqId === null) {
-      if (m.code === 'full') showBanner('limit', errorText('full'), 'error');
+      if (m.code === 'full') {
+        boardFull = true;
+        showBanner('limit', errorText('full'), 'error');
+      }
       else if (m.code !== 'not_ready') toast(errorText(m.code));
     }
   });
@@ -293,6 +301,7 @@ function start(clientId: string, initial: Profile): void {
 
   let fitted = false;
   state.on('snapshot', () => {
+    boardFull = false;
     hideBanner('limit');
     syncLocked();
     syncRate();
@@ -309,20 +318,49 @@ function start(clientId: string, initial: Profile): void {
 
   /* ---------- connection banners ---------- */
 
+  // While the socket stays down, probe the Worker over plain HTTP. If it answers at all, the
+  // network is fine and the WebSocket is being refused, which on the free plan means a daily
+  // limit was hit (spec §8). If it can't be reached, it's the network (or the server is down).
   let everOpen = false;
-  const unreachable = setTimeout(() => {
+  let downTimer: ReturnType<typeof setTimeout> | null = null;
+  let probeRound = 0;
+  function whileDown(): void {
+    downTimer = null;
+    if (socket.status() === 'open') return;
     if (!everOpen) {
       showBanner('unreachable', `Can't reach the board server at ${SERVER_URL}. If you're on a school network, ask IT to allow this address.`, 'error');
     }
-  }, UNREACHABLE_AFTER_MS);
+    const round = ++probeRound;
+    fetch(`${SERVER_URL}/boards/${BOARD}/files/${'0'.repeat(32)}`, { mode: 'no-cors', cache: 'no-store' }).then(
+      () => {
+        if (round !== probeRound || socket.status() === 'open' || boardFull) return;
+        hideBanner('unreachable');
+        hideBanner('reconnecting');
+        showBanner('limit', "The board has hit today's free limit. It'll be back at midnight UTC.", 'error');
+      },
+      () => {
+        // Not reachable: keep the unreachable or reconnecting banner.
+      },
+    );
+    downTimer = setTimeout(whileDown, PROBE_EVERY_MS);
+  }
+  function watchDown(): void {
+    if (downTimer === null) downTimer = setTimeout(whileDown, UNREACHABLE_AFTER_MS);
+  }
+  watchDown();
   socket.onStatus((status) => {
     if (status === 'open') {
       everOpen = true;
-      clearTimeout(unreachable);
+      probeRound++;
+      if (downTimer !== null) clearTimeout(downTimer);
+      downTimer = null;
       hideBanner('unreachable');
       hideBanner('reconnecting');
+      // A 'full' answer arrives after open and shows the banner again.
+      hideBanner('limit');
     } else if (status === 'closed' && everOpen) {
       showBanner('reconnecting', 'Reconnecting…', 'warn');
+      watchDown();
     }
   });
 

@@ -1,9 +1,20 @@
 import { LINK_CHECK } from '@class-board/shared/constants';
+import { planLink } from '@class-board/shared/urls';
 import { evaluateFraming } from './frameHeaders';
 
 export interface LinkCheckResult { embeddable: 'yes' | 'no' | 'unknown'; title: string | null; icon: string | null }
 
 const UNKNOWN: LinkCheckResult = { embeddable: 'unknown', title: null, icon: null };
+// Never 'unknown' for a refused target: unknown tiles go live in every viewer's browser.
+const NO: LinkCheckResult = { embeddable: 'no', title: null, icon: null };
+
+function hostOf(href: string): string | null {
+  try {
+    return new URL(href).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
 const TITLE_MAX = 200;
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 
@@ -127,6 +138,11 @@ export async function checkLink(embedUrl: string, boardOrigin: string, fetchImpl
     return UNKNOWN;
   }
 
+  const boardHost = hostOf(boardOrigin);
+  const onBoardHost = (u: URL) => boardHost !== null && u.hostname.toLowerCase() === boardHost;
+  // A page on the board's own host must never be framed with scripts.
+  if (onBoardHost(url)) return NO;
+
   const signal = AbortSignal.timeout(LINK_CHECK.timeoutMs);
   let res: Response;
   try {
@@ -141,8 +157,13 @@ export async function checkLink(embedUrl: string, boardOrigin: string, fetchImpl
       if (res.status < 300 || res.status >= 400 || !location) break;
       await res.body?.cancel().catch(() => {});
       if (hops >= LINK_CHECK.maxRedirects) return UNKNOWN;
-      const next = httpUrl(location, url);
-      if (!next) return UNKNOWN;
+      let next: URL;
+      try {
+        next = new URL(location, url);
+      } catch {
+        return UNKNOWN;
+      }
+      if (!planLink(next.href).ok || onBoardHost(next)) return NO;
       url = next;
     }
   } catch {

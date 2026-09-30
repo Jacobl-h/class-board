@@ -16,16 +16,27 @@ export class UploadError extends Error {
   }
 }
 
-/** Uploads one HTML file and resolves with its file id. */
-export async function uploadHtml(serverUrl: string, board: string, html: Blob, fileName: string): Promise<string> {
+/**
+ * Uploads one HTML file and resolves with its file id. `clientId`, when given, goes in X-Client-Id so the
+ * server can rate-limit each student rather than a whole class behind one school IP.
+ */
+export async function uploadHtml(
+  serverUrl: string,
+  board: string,
+  html: Blob,
+  fileName: string,
+  clientId?: string,
+): Promise<string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'text/html; charset=utf-8',
+    'X-File-Name': encodeURIComponent(fileName),
+  };
+  if (clientId) headers['X-Client-Id'] = clientId;
   let res: Response;
   try {
     res = await fetch(`${serverUrl.replace(/\/+$/, '')}/boards/${board}/files`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'X-File-Name': encodeURIComponent(fileName),
-      },
+      headers,
       body: html,
     });
   } catch {

@@ -179,6 +179,20 @@ describe('createLiveFrames', () => {
     expect(frameOf(6)!.getAttribute('sandbox')).toBe(NO_SAME_ORIGIN);
   });
 
+  it("drops allow-same-origin for http:// links on the board's host", () => {
+    state.set(linkView(7, { embedUrl: 'http://jacobl-h.github.io/x' }));
+    camera.show(7);
+    start();
+    expect(frameOf(7)!.getAttribute('sandbox')).toBe(NO_SAME_ORIGIN);
+  });
+
+  it('keeps allow-same-origin for other hosts on the same site', () => {
+    state.set(linkView(8, { embedUrl: 'https://other.github.io/x' }));
+    camera.show(8);
+    start();
+    expect(frameOf(8)!.getAttribute('sandbox')).toBe(FULL_SANDBOX);
+  });
+
   it('does not mount blocked, pending or off-screen tiles', () => {
     state.set(linkView(1, { embeddable: 'no' }));
     state.set(linkView(2, { embeddable: 'pending' }));

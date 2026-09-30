@@ -1,7 +1,6 @@
 import { SLOT_COUNT } from '@class-board/shared/constants';
 import { slotName } from '@class-board/shared/slots';
 import type { Rect, SlotIndex, TileView } from '@class-board/shared/types';
-import { originOf } from '@class-board/shared/urls';
 import type { LiveFramesApi, LiveFramesDeps, Unsubscribe } from '../contracts';
 import { h } from '../ui/dom';
 import { serverHref } from '../util/url';
@@ -29,10 +28,20 @@ function frameSrc(view: TileView, serverUrl: string): string | null {
   return view.embedUrl;
 }
 
+function hostnameOf(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
 function sandboxFor(view: TileView, src: string, boardOrigin: string): string {
-  // Uploads never get allow-same-origin; neither do pages on the board's own origin,
-  // which could otherwise script the board.
-  const drop = view.kind === 'html' || originOf(src) === boardOrigin;
+  // Uploads never get allow-same-origin; neither do pages on the board's own host, which
+  // could otherwise script the board. Hosts are compared, not origins: http://<board host>/
+  // is upgraded to https and would then be same-origin with the board.
+  const host = hostnameOf(src);
+  const drop = view.kind === 'html' || host === null || host === hostnameOf(boardOrigin);
   return (drop ? SANDBOX.filter((t) => t !== 'allow-same-origin') : SANDBOX).join(' ');
 }
 

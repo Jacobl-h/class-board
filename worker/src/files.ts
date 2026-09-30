@@ -116,7 +116,7 @@ export function corsHeaders(origin: string | null, allowedOrigins: string[]): Re
   const headers: Record<string, string> = {
     Vary: 'Origin',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-File-Name',
+    'Access-Control-Allow-Headers': 'Content-Type, X-File-Name, X-Client-Id',
   };
   if (origin !== null && allowedOrigins.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
   return headers;

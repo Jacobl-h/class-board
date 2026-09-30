@@ -31,6 +31,22 @@ describe('uploadHtml', () => {
     });
   });
 
+  it('sends the clientId as X-Client-Id when given', async () => {
+    const fetchFn = stubFetch(() => jsonResponse({ fileId: 'f' }));
+    await uploadHtml(SERVER, 'main', new Blob(['<p>']), 'a.html', 'client-123');
+    expect(fetchFn.mock.calls[0]![1].headers).toEqual({
+      'Content-Type': 'text/html; charset=utf-8',
+      'X-File-Name': 'a.html',
+      'X-Client-Id': 'client-123',
+    });
+  });
+
+  it('leaves out X-Client-Id when no clientId is given', async () => {
+    const fetchFn = stubFetch(() => jsonResponse({ fileId: 'f' }));
+    await uploadHtml(SERVER, 'main', new Blob(['<p>']), 'a.html');
+    expect(fetchFn.mock.calls[0]![1].headers).not.toHaveProperty('X-Client-Id');
+  });
+
   it('percent-encodes file names so the header stays ASCII', async () => {
     const fetchFn = stubFetch(() => jsonResponse({ fileId: 'f' }));
     await uploadHtml(SERVER, 'main', new Blob(['<p>']), 'café ☕.html');

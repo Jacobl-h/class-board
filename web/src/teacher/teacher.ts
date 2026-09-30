@@ -58,6 +58,17 @@ export function createTeacher(socket: BoardSocket, storage: Storage | undefined 
     }
   }
 
+  // The server remembers teacher status per connection, so every new connection (a reload or a
+  // reconnect) must sign in again. connectBoard sends hello before it reports 'open'.
+  socket.onStatus((status) => {
+    if (status !== 'open' || code === null) return;
+    const sent = code;
+    socket.request({ type: 'teacher', reqId: makeReqId(), code: sent, action: 'check' }).catch((err) => {
+      // Only a wrong passcode logs out; a dropped or slow connection will be retried on the next open.
+      if ((err as { code?: string }).code === 'bad_code' && code === sent) setCode(null);
+    });
+  });
+
   return {
     active: () => code !== null,
 

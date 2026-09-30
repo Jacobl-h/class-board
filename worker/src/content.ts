@@ -5,7 +5,7 @@ import type { Env } from './env';
 import { checkUpload, htmlFileResponse, ID_RE, json, newId, parseOrigins, shotResponse } from './files';
 import { KeyedLimiter } from './limits';
 import { checkLink } from './linkCheck';
-import { runShotQueue, type Shooter } from './shots';
+import { runShotQueue, shotTarget, type Shooter } from './shots';
 import { toTileView, type BoardStore, type VersionRow } from './store';
 
 /** What the content handlers need from the Board Durable Object. */
@@ -17,7 +17,7 @@ export interface ContentHost {
   fetchImpl: typeof fetch;
   /** Null when screenshots are off (no Browser Rendering binding and no test shooter). */
   shots: ShooterSession | null;
-  uploads: KeyedLimiter;
+  uploads: UploadLimiter;
   /** To every connection that has said hello. */
   broadcast(msg: ServerMsg): void;
   /** Moves the alarm earlier if `at` is before the one already set. */
@@ -48,8 +48,56 @@ export class ShooterSession {
   }
 }
 
-export function createUploadLimiter(now: () => number): KeyedLimiter {
-  return new KeyedLimiter(RATES.uploadsPerMinute, now);
+/**
+ * A class usually shares one public IP, so the per-minute upload limit applies to each client
+ * (IP plus the X-Client-Id header), with a much higher per-IP ceiling as a backstop. A request
+ * without a valid client id is limited by its IP alone.
+ */
+const UPLOADS_PER_IP_PER_MINUTE = 120;
+const CLIENT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+export interface UploadLimiter {
+  allow(ip: string, clientId: string | null): boolean;
+}
+
+export function createUploadLimiter(now: () => number): UploadLimiter {
+  const perClient = new KeyedLimiter(RATES.uploadsPerMinute, now);
+  const perIp = new KeyedLimiter(UPLOADS_PER_IP_PER_MINUTE, now);
+  return {
+    allow(ip, clientId) {
+      const key = clientId !== null && CLIENT_ID_RE.test(clientId) ? `${ip}|${clientId}` : ip;
+      // Per client first, so a client retrying past its own limit doesn't use up the class's backstop.
+      return perClient.allow(key) && perIp.allow(ip);
+    },
+  };
+}
+
+/**
+ * Reads the body, stopping as soon as it passes `max` bytes whatever Content-Length says
+ * (a chunked request has none). Null means too large.
+ */
+async function readCapped(request: Request, max: number): Promise<ArrayBuffer | null> {
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.byteLength;
+  }
+  return out.buffer;
 }
 
 /** Broadcasts a row only while it's still its slot's current version. */
@@ -65,14 +113,19 @@ async function queueShot(host: ContentHost, versionId: number): Promise<void> {
   await host.scheduleAlarm(now);
 }
 
-/** Runs after every successful post. */
+/**
+ * Runs after every new version: post, and the copies made by rename and restore. A copy can
+ * still be pending, or lack a screenshot, because work started for the old version is dropped
+ * once that version is no longer current.
+ */
 export function afterPost(host: ContentHost, row: VersionRow): void {
-  if (row.kind === 'html') {
-    host.waitUntil(queueShot(host, row.id));
+  if (row.kind === 'link' && row.embeddable === 'pending' && row.embed_url) {
+    // The check queues the screenshot when it finishes.
+    host.waitUntil(checkAndUpdate(host, row, row.embed_url));
     return;
   }
-  if (row.kind === 'link' && row.embeddable === 'pending' && row.embed_url) {
-    host.waitUntil(checkAndUpdate(host, row, row.embed_url));
+  if (!row.shot_id && shotTarget(row, host.board, host.env.PUBLIC_URL) !== null) {
+    host.waitUntil(queueShot(host, row.id));
   }
 }
 
@@ -146,11 +199,13 @@ async function upload(host: ContentHost, request: Request): Promise<Response> {
   const origin = request.headers.get('Origin');
   if (!origin || !parseOrigins(host.env.ALLOWED_ORIGINS).includes(origin)) return json({ error: 'origin' }, 403);
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  if (!host.uploads.allow(ip)) return json({ error: 'rate_limited' }, 429);
+  if (!host.uploads.allow(ip, request.headers.get('X-Client-Id'))) return json({ error: 'rate_limited' }, 429);
 
-  // Refuse obviously oversized bodies before reading them; checkUpload re-checks the real size.
+  // Refuse obviously oversized bodies before reading them; the capped read stops any that lie.
   if (Number(request.headers.get('Content-Length') ?? '0') > LIMITS.htmlMaxBytes) return json({ error: 'too_large' }, 413);
-  const checked = checkUpload(await request.arrayBuffer(), fileNameOf(request));
+  const body = await readCapped(request, LIMITS.htmlMaxBytes);
+  if (body === null) return json({ error: 'too_large' }, 413);
+  const checked = checkUpload(body, fileNameOf(request));
   if (!checked.ok) return json({ error: checked.code }, checked.code === 'too_large' ? 413 : 400);
   const fileId = newId();
   host.store.putFile(fileId, checked.html, '', host.now());

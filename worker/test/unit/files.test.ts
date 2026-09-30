@@ -232,7 +232,7 @@ describe('corsHeaders', () => {
       'Access-Control-Allow-Origin': 'https://jacobl-h.github.io',
       Vary: 'Origin',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-File-Name',
+      'Access-Control-Allow-Headers': 'Content-Type, X-File-Name, X-Client-Id',
     });
   });
 
@@ -245,7 +245,7 @@ describe('corsHeaders', () => {
     expect(h['Access-Control-Allow-Origin']).toBeUndefined();
     expect(h.Vary).toBe('Origin');
     expect(h['Access-Control-Allow-Methods']).toBe('GET, POST, OPTIONS');
-    expect(h['Access-Control-Allow-Headers']).toBe('Content-Type, X-File-Name');
+    expect(h['Access-Control-Allow-Headers']).toBe('Content-Type, X-File-Name, X-Client-Id');
   });
 
   it('omits Allow-Origin when there is no Origin header', () => {

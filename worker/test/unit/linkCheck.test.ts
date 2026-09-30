@@ -192,3 +192,29 @@ describe('checkLink: non-HTML and large pages', () => {
   });
 
 });
+
+describe('checkLink: redirect and board-host safety', () => {
+  const NO = { embeddable: 'no', title: null, icon: null };
+  it.each(['http://127.0.0.1:8080/', 'http://192.168.1.1/', 'http://localhost/', 'http://x.internal/', 'ftp://site.example/'])(
+    'answers "no" (not unknown) for a redirect to %s',
+    async (to) => {
+      const { impl, calls } = fakeFetch({ 'https://site.example/': redirect(to) });
+      const r = await checkLink('https://site.example/', BOARD, impl);
+      expect(r).toEqual(NO);
+      expect(calls).toHaveLength(1);
+    },
+  );
+  it('answers "no" when a later hop is private', async () => {
+    const { impl } = fakeFetch({ 'https://a.example/': redirect('https://b.example/'), 'https://b.example/': redirect('http://10.0.0.1/') });
+    expect(await checkLink('https://a.example/', BOARD, impl)).toEqual(NO);
+  });
+  it('answers "no" for a URL on the board host', async () => {
+    const { impl, calls } = fakeFetch({});
+    expect(await checkLink('http://jacobl-h.github.io/other/', BOARD, impl)).toEqual(NO);
+    expect(calls).toHaveLength(0);
+  });
+  it('answers "no" for a redirect onto the board host', async () => {
+    const { impl } = fakeFetch({ 'https://site.example/': redirect('http://jacobl-h.github.io/x') });
+    expect(await checkLink('https://site.example/', BOARD, impl)).toEqual(NO);
+  });
+});

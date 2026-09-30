@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ErrorCode, RequestMsg, ServerMsg } from '@class-board/shared/types';
-import type { BoardSocket, ServerErrorLike } from '../src/contracts';
+import type { BoardSocket, ServerErrorLike, SocketStatus } from '../src/contracts';
 import { createTeacher } from '../src/teacher/teacher';
 
 function memoryStorage(initial: Record<string, string> = {}): Storage {
@@ -24,6 +24,7 @@ function serverError(code: ErrorCode): ServerErrorLike {
 /** A BoardSocket whose request() answers from a script, and remembers what it was asked. */
 function fakeSocket(reply: (msg: RequestMsg) => ServerMsg | ServerErrorLike) {
   const requests: RequestMsg[] = [];
+  const statusListeners = new Set<(status: SocketStatus) => void>();
   const socket: BoardSocket = {
     send: vi.fn(),
     request: async (msg) => {
@@ -33,11 +34,17 @@ function fakeSocket(reply: (msg: RequestMsg) => ServerMsg | ServerErrorLike) {
       return result as Extract<ServerMsg, { type: 'ok' | 'historyResult' }>;
     },
     onMessage: () => () => {},
-    onStatus: () => () => {},
+    onStatus: (fn) => {
+      statusListeners.add(fn);
+      return () => void statusListeners.delete(fn);
+    },
     status: () => 'open',
     close: vi.fn(),
   };
-  return { socket, requests };
+  const emitStatus = (status: SocketStatus) => {
+    for (const fn of [...statusListeners]) fn(status);
+  };
+  return { socket, requests, emitStatus };
 }
 
 const ok = (msg: RequestMsg): ServerMsg => ({ type: 'ok', reqId: msg.reqId });
@@ -204,5 +211,52 @@ describe('createTeacher onChange', () => {
     off();
     await teacher.login('letmein');
     expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe('createTeacher reconnect', () => {
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  it('re-sends the check with the stored passcode each time the socket opens', async () => {
+    const { socket, requests, emitStatus } = fakeSocket(ok);
+    const teacher = createTeacher(socket, memoryStorage({ 'classBoard.teacher': 'letmein' }));
+    emitStatus('open');
+    emitStatus('closed');
+    emitStatus('open');
+    await flush();
+    expect(requests).toHaveLength(2);
+    for (const r of requests) expect(r).toMatchObject({ type: 'teacher', action: 'check', code: 'letmein' });
+    expect(teacher.active()).toBe(true);
+  });
+
+  it('sends nothing on open when not signed in, or for other statuses', async () => {
+    const { socket, requests, emitStatus } = fakeSocket(ok);
+    createTeacher(socket, memoryStorage());
+    emitStatus('open');
+    emitStatus('connecting');
+    emitStatus('closed');
+    await flush();
+    expect(requests).toHaveLength(0);
+  });
+
+  it('logs out when the re-check answers bad_code', async () => {
+    const storage = memoryStorage({ 'classBoard.teacher': 'changed' });
+    const { socket, emitStatus } = fakeSocket(() => serverError('bad_code'));
+    const teacher = createTeacher(socket, storage);
+    const fn = vi.fn();
+    teacher.onChange(fn);
+    emitStatus('open');
+    await flush();
+    expect(teacher.active()).toBe(false);
+    expect(storage.getItem('classBoard.teacher')).toBeNull();
+    expect(fn.mock.calls).toEqual([[false]]);
+  });
+
+  it('stays signed in when the re-check fails for another reason', async () => {
+    const { socket, emitStatus } = fakeSocket(() => serverError('not_ready'));
+    const teacher = createTeacher(socket, memoryStorage({ 'classBoard.teacher': 'letmein' }));
+    emitStatus('open');
+    await flush();
+    expect(teacher.active()).toBe(true);
   });
 });
