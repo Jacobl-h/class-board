@@ -113,7 +113,8 @@ describe('post', () => {
     const reply = await request(a!, { type: 'post', slot: 6, baseVersion: 0, content: { kind: 'html', fileId: FILE_ID }, label: 'Quiz' });
     expect(reply.type).toBe('ok');
     expect(await nextTile(a!, 6)).toMatchObject({
-      kind: 'html', title: 'Quiz  time', embeddable: 'yes', url: null, embedUrl: null,
+      // checkUpload collapses whitespace in titles, as browsers do when they show them.
+      kind: 'html', title: 'Quiz time', embeddable: 'yes', url: null, embedUrl: null,
       fileUrl: `/boards/${board}/files/${FILE_ID}`,
     });
   });

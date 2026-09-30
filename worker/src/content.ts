@@ -41,6 +41,11 @@ export class ShooterSession {
     this.shooter = null;
     if (shooter) await shooter.close().catch(() => undefined);
   }
+
+  /** Drops the cached shooter without closing it; runShotQueue already closed the one it used. */
+  forget(): void {
+    this.shooter = null;
+  }
 }
 
 export function createUploadLimiter(now: () => number): KeyedLimiter {
@@ -102,7 +107,8 @@ export async function runAlarm(host: ContentHost): Promise<number | null> {
     now: () => host.now(),
     onUpdated: (row) => broadcastIfCurrent(host, row),
   });
-  if (shots && (next === null || next > host.now())) await shots.close();
+  // runShotQueue closes the shooter it used before returning, so the next alarm needs a fresh one.
+  shots?.forget();
   return next;
 }
 

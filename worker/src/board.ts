@@ -63,6 +63,21 @@ const META_BUDGET_DAY = 'budget_day';
 const META_BUDGET_COUNT = 'budget_count';
 const META_LOCKED = 'locked';
 
+/**
+ * The reqId of a message that failed validation, if it has a well-formed one, so the sender's
+ * request settles with 'invalid' at once instead of timing out.
+ */
+function reqIdOf(raw: string): string | null {
+  if (raw.length > 16_384) return null;
+  try {
+    const data: unknown = JSON.parse(raw);
+    const id = typeof data === 'object' && data !== null ? (data as { reqId?: unknown }).reqId : undefined;
+    return typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export class Board extends Server<Env> {
   static options = { hibernate: true };
 
@@ -150,7 +165,7 @@ export class Board extends Server<Env> {
 
     const msg = typeof raw === 'string' ? parseClientMsg(raw) : null;
     if (!msg) {
-      this.sendError(conn, null, 'invalid');
+      this.sendError(conn, typeof raw === 'string' ? reqIdOf(raw) : null, 'invalid');
       return;
     }
     const state = stateOf(conn);
