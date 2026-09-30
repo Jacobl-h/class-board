@@ -27,6 +27,8 @@ export interface Person {
   clientId: string;
   profile: Profile;
   presence: Presence;
+  /** True while this connection is signed in as a teacher (any number of people can be). */
+  teacher?: boolean;
 }
 
 export type TileKind = 'empty' | 'link' | 'html';
@@ -69,7 +71,7 @@ export interface VersionSummary {
 
 export type PostContent = { kind: 'link'; url: string } | { kind: 'html'; fileId: string };
 
-export type TeacherAction = 'check' | 'lock' | 'unlock' | 'clear' | 'resetCursor';
+export type TeacherAction = 'check' | 'lock' | 'unlock' | 'clear' | 'resetCursor' | 'logout';
 
 export type ClientMsg =
   | { type: 'hello'; clientId: string; profile: Profile }

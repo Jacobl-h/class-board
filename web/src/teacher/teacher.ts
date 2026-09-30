@@ -85,7 +85,18 @@ export function createTeacher(socket: BoardSocket, storage: Storage | undefined 
       return 'ok';
     },
 
-    logout: () => setCode(null),
+    logout() {
+      const sent = code;
+      setCode(null);
+      if (sent === null) return;
+      // Best effort: tells the server to drop this connection's Teacher tag. A failure changes
+      // nothing here, since the local sign-out already happened.
+      try {
+        socket.request({ type: 'teacher', reqId: makeReqId(), code: sent, action: 'logout' }).catch(() => {});
+      } catch {
+        // A socket that throws synchronously is treated the same as a failed request.
+      }
+    },
     lock: () => act({ action: 'lock' }),
     unlock: () => act({ action: 'unlock' }),
     clear: (slot: SlotIndex) => act({ action: 'clear', slot }),

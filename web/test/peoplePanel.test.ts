@@ -308,13 +308,38 @@ describe('teacher features', () => {
     expect(reset()).toBe(true);
   });
 
-  it('has a footer link that says Teacher, then Teacher tools once signed in', () => {
+  it('has a footer link that says Teacher sign-in, then Teacher tools once signed in', () => {
     const { t } = mount([person('a', 'Ana')]);
     open();
     const footer = () => panelEl()!.querySelector('[data-action="teacher"]')!.textContent;
-    expect(footer()).toBe('Teacher');
+    expect(footer()).toBe('Teacher sign-in');
     t.setActive(true);
     expect(footer()).toBe('Teacher tools');
+    t.setActive(false);
+    expect(footer()).toBe('Teacher sign-in');
+  });
+
+  it('tags every person the server marks as a teacher, for everyone to see', () => {
+    mount([{ ...person('a', 'Ana'), teacher: true }, person('b', 'Ben'), { ...person('c', 'Cy'), teacher: true }]);
+    open();
+    const tag = (id: string) => rowEl(id)!.querySelector<HTMLElement>('.person-teacher-tag')!;
+    expect(tag('a').hidden).toBe(false);
+    expect(tag('a').textContent).toBe('Teacher');
+    expect(tag('b').hidden).toBe(true);
+    expect(tag('c').hidden).toBe(false);
+    expect(rowEl('a')!.querySelector('[data-action="jump"]')!.getAttribute('aria-label')).toBe('Ana, teacher, On the board. Go to them.');
+    expect(rowEl('b')!.querySelector('[data-action="jump"]')!.getAttribute('aria-label')).toBe('Ben, On the board. Go to them.');
+  });
+
+  it('shows or hides the Teacher tag as people sign in or out', () => {
+    const s = mount([person('a', 'Ana')]).s;
+    open();
+    const tag = () => rowEl('a')!.querySelector<HTMLElement>('.person-teacher-tag')!;
+    expect(tag().hidden).toBe(true);
+    s.set([{ ...person('a', 'Ana'), teacher: true }]);
+    expect(tag().hidden).toBe(false);
+    s.set([{ ...person('a', 'Ana'), teacher: false }]);
+    expect(tag().hidden).toBe(true);
   });
 
   it('calls onTeacher and closes when the footer link is clicked', () => {

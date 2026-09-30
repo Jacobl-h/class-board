@@ -3,15 +3,22 @@ import { COLORS, SHAPES } from '@class-board/shared/constants';
 import { decodeArt, emptyGrid, encodeArt } from '@class-board/shared/pixelArt';
 import { defaultProfile } from '@class-board/shared/protocol';
 import type { Profile } from '@class-board/shared/types';
+import type { TeacherApi, TeacherLogin } from '../src/contracts';
 import { cursorImage, shapeSvg } from '../src/cursors/render';
 import { openProfilePanel } from '../src/profile/panel';
+import { errorText } from '../src/ui/errors';
 
 let saved: Profile[];
-const onSave = (p: Profile) => void saved.push(p);
+let savedCodes: (string | undefined)[];
+const onSave = (p: Profile, code?: string) => {
+  saved.push(p);
+  savedCodes.push(code);
+};
 
 beforeEach(() => {
   document.body.innerHTML = '<div id="modal-root"></div>';
   saved = [];
+  savedCodes = [];
 });
 
 afterEach(() => {
@@ -119,7 +126,7 @@ describe('colors, shapes and tabs', () => {
     expect(q(`[data-color="${COLORS[0]}"]`).getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('shows the six shapes drawn in the chosen color', () => {
+  it('shows the five shapes drawn in the chosen color', () => {
     openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave });
     const found = [...modal()!.querySelectorAll<HTMLElement>('[data-shape]')].map((el) => el.dataset.shape);
     expect(found).toEqual([...SHAPES]);
@@ -316,5 +323,213 @@ describe('cleanup', () => {
     openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave });
     save();
     expect(document.querySelector('.modal')).toBeNull();
+  });
+});
+
+function fakeTeacher(opts: { active?: boolean; login?: () => Promise<TeacherLogin> } = {}) {
+  let on = opts.active ?? false;
+  const listeners = new Set<(a: boolean) => void>();
+  const set = (next: boolean) => {
+    if (next === on) return;
+    on = next;
+    for (const fn of [...listeners]) fn(on);
+  };
+  const teacher = {
+    active: () => on,
+    login: vi.fn(async (_code: string): Promise<TeacherLogin> => {
+      const result = opts.login ? await opts.login() : 'ok';
+      if (result === 'ok') set(true);
+      return result;
+    }),
+    logout: vi.fn(() => set(false)),
+    lock: vi.fn(async () => {}),
+    unlock: vi.fn(async () => {}),
+    clear: vi.fn(async () => {}),
+    resetCursor: vi.fn(async () => {}),
+    onChange(fn: (a: boolean) => void) {
+      listeners.add(fn);
+      return () => void listeners.delete(fn);
+    },
+  } satisfies TeacherApi;
+  return { teacher, set, listenerCount: () => listeners.size };
+}
+
+const codeInput = () => modal()!.querySelector<HTMLInputElement>('input[name="teacher-code"]');
+const teacherError = () => q('.teacher-error');
+function typeCode(value: string): void {
+  codeInput()!.value = value;
+  codeInput()!.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+describe('teacher section', () => {
+  it('offers a passcode field with a hint when not signed in', () => {
+    const { teacher } = fakeTeacher();
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher, locked: () => false });
+    const input = codeInput()!;
+    expect(input.type).toBe('password');
+    expect(input.getAttribute('autocomplete')).toBe('off');
+    expect(input.closest('label')!.textContent).toContain('Teacher passcode');
+    expect(q('[data-section="teacher"]').textContent).toContain('Only for teachers. Leave it empty otherwise.');
+    expect(modal()!.querySelector('[data-action="lock"]')).toBeNull();
+  });
+
+  it('sits below the cursor choices and above Save', () => {
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave });
+    const section = q('[data-section="teacher"]');
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect(follows(q('[data-panel="shape"]'), section)).toBe(true);
+    expect(follows(section, q('[data-action="save"]'))).toBe(true);
+  });
+
+  it('saves without signing in when the passcode is empty', () => {
+    const { teacher } = fakeTeacher();
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher });
+    save();
+    expect(teacher.login).not.toHaveBeenCalled();
+    expect(saved).toHaveLength(1);
+    expect(savedCodes).toEqual([undefined]);
+    expect(modal()).toBeNull();
+  });
+
+  it('signs in with a typed passcode, then saves and closes', async () => {
+    const { teacher } = fakeTeacher();
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher });
+    typeCode('test-passcode');
+    save();
+    expect(teacher.login).toHaveBeenCalledWith('test-passcode');
+    await settle();
+    expect(saved).toEqual([defaultProfile('Ana')]);
+    expect(savedCodes).toEqual([undefined]);
+    expect(modal()).toBeNull();
+  });
+
+  it('signs in when Enter is pressed in the passcode field', async () => {
+    const { teacher } = fakeTeacher();
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher });
+    typeCode('test-passcode');
+    codeInput()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(teacher.login).toHaveBeenCalledWith('test-passcode');
+    await settle();
+    expect(saved).toHaveLength(1);
+  });
+
+  it('stays open with an error when the passcode is wrong', async () => {
+    const { teacher } = fakeTeacher({ login: async () => 'bad' });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher });
+    typeCode('nope');
+    save();
+    await settle();
+    expect(saved).toEqual([]);
+    expect(modal()).not.toBeNull();
+    expect(teacherError().hidden).toBe(false);
+    expect(teacherError().textContent).toBe("That passcode isn't right.");
+    expect(q('[data-action="save"]').hasAttribute('disabled')).toBe(false);
+    typeCode('nope2');
+    expect(teacherError().hidden).toBe(true);
+  });
+
+  it('says to wait after too many tries', async () => {
+    const { teacher } = fakeTeacher({ login: async () => 'locked_out' });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher });
+    typeCode('nope');
+    save();
+    await settle();
+    expect(teacherError().textContent).toBe('Too many tries. Wait 10 minutes and try again.');
+    expect(saved).toEqual([]);
+  });
+
+  it('shows the server error when the sign-in request fails', async () => {
+    const { teacher } = fakeTeacher({
+      login: () => Promise.reject(Object.assign(new Error('x'), { code: 'not_ready' })),
+    });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher });
+    typeCode('test-passcode');
+    save();
+    await settle();
+    await settle();
+    expect(teacherError().textContent).toBe(errorText('not_ready'));
+    expect(modal()).not.toBeNull();
+  });
+
+  it('checks the profile before trying the passcode', () => {
+    const { teacher } = fakeTeacher();
+    openProfilePanel({ initial: null, requireName: true, onSave, teacher });
+    typeCode('test-passcode');
+    save();
+    expect(teacher.login).not.toHaveBeenCalled();
+    expect(error().textContent).toBe('Enter a name. Others see it next to your cursor.');
+  });
+
+  it('hands the passcode to onSave when there is no teacher session yet', () => {
+    openProfilePanel({ initial: null, requireName: true, onSave });
+    typeName('Ana');
+    typeCode('test-passcode');
+    save();
+    expect(saved).toHaveLength(1);
+    expect(savedCodes).toEqual(['test-passcode']);
+    expect(modal()).toBeNull();
+  });
+
+  it('shows lock and sign-out controls when signed in', () => {
+    const { teacher } = fakeTeacher({ active: true });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher, locked: () => false });
+    expect(codeInput()).toBeNull();
+    expect(q('[data-section="teacher"]').textContent).toContain("You're signed in as a teacher.");
+    expect(q('[data-action="lock"]').textContent).toBe('Lock the board');
+    expect(q('[data-action="logout"]').textContent).toBe('Sign out');
+  });
+
+  it('offers unlock when the board is locked', () => {
+    const { teacher } = fakeTeacher({ active: true });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher, locked: () => true });
+    expect(modal()!.querySelector('[data-action="lock"]')).toBeNull();
+    expect(q('[data-action="unlock"]').textContent).toBe('Unlock the board');
+  });
+
+  it('locks, then flips the button to unlock, and back', async () => {
+    const { teacher } = fakeTeacher({ active: true });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher, locked: () => false });
+    q('[data-action="lock"]').click();
+    expect(teacher.lock).toHaveBeenCalledTimes(1);
+    await settle();
+    q('[data-action="unlock"]').click();
+    expect(teacher.unlock).toHaveBeenCalledTimes(1);
+    await settle();
+    expect(modal()!.querySelector('[data-action="lock"]')).not.toBeNull();
+    expect(modal()).not.toBeNull();
+  });
+
+  it('shows an error in the section when locking fails', async () => {
+    const { teacher } = fakeTeacher({ active: true });
+    teacher.lock.mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'rate_limited' }));
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher, locked: () => false });
+    q('[data-action="lock"]').click();
+    await settle();
+    expect(teacherError().hidden).toBe(false);
+    expect(teacherError().textContent).toBe(errorText('rate_limited'));
+    expect(q('[data-action="lock"]').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('signs out and shows the passcode field again', () => {
+    const { teacher } = fakeTeacher({ active: true });
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher, locked: () => false });
+    q('[data-action="logout"]').click();
+    expect(teacher.logout).toHaveBeenCalledTimes(1);
+    expect(codeInput()).not.toBeNull();
+    expect(modal()!.querySelector('[data-action="logout"]')).toBeNull();
+    expect(modal()).not.toBeNull();
+  });
+
+  it('re-renders when the teacher session changes elsewhere, and stops listening once closed', () => {
+    const t = fakeTeacher();
+    openProfilePanel({ initial: defaultProfile('Ana'), requireName: true, onSave, teacher: t.teacher, locked: () => false });
+    expect(codeInput()).not.toBeNull();
+    t.set(true);
+    expect(codeInput()).toBeNull();
+    expect(q('[data-action="lock"]')).not.toBeNull();
+    t.set(false);
+    expect(codeInput()).not.toBeNull();
+    q('[data-action="close"]').click();
+    expect(t.listenerCount()).toBe(0);
   });
 });

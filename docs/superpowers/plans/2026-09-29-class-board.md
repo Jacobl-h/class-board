@@ -500,8 +500,8 @@ modules from other workstreams; everything else imports types from `web/src/cont
 | Post dialog | `.modal[data-dialog="post"]`, tabs `[data-tab="link\|html"]`, `input[name="url"]`, `input[name="file"]`, `textarea[name="html"]`, `input[name="label"]`, `[data-action="submit"]`, `.dialog-error` |
 | History dialog | `.modal[data-dialog="history"]`, `.history-row[data-version="<id>"]`, `[data-action="restore"]` |
 | Profile dialog | `.modal[data-dialog="profile"]`, `input[name="name"]`, `[data-color="<hex>"]`, `[data-shape="<shape>"]`, `[data-tab="shape\|pixels"]`, `.pixel-grid [data-cell="<0-255>"]`, `[data-tool="pen\|eraser\|tip\|clear"]`, `[data-action="save"]` |
-| Teacher dialog | `.modal[data-dialog="teacher"]`, `input[name="code"]`, `[data-action="login\|lock\|unlock\|logout"]`, `.dialog-error` |
-| People panel | `.people-panel`, `.person[data-person="<id>"]`, `[data-action="jump"]`, `[data-action="reset-cursor"]`, `[data-action="teacher"]` |
+| Teacher section (in the profile dialog; the separate teacher dialog was removed) | `.modal[data-dialog="profile"] input[name="teacher-code"]`, `[data-action="lock\|unlock\|logout"]`, `.teacher-error` |
+| People panel | `.people-panel`, `.person[data-person="<id>"]`, `.person-teacher-tag`, `[data-action="jump"]`, `[data-action="reset-cursor"]`, `[data-action="teacher"]` (opens the profile dialog) |
 | Remote cursor | `#cursor-layer .cursor[data-person="<id>"]`, `.cursor-tag`; class `is-idle` when idle |
 | Banner / hint | `#banner [data-banner="<id>"]` (ids: `reconnecting`, `unreachable`, `locked`, `cursors-paused`, `limit`, `toast`); `#hint.is-visible` |
 | Modal close | `.modal [data-action="close"]` |
@@ -1350,3 +1350,12 @@ files already reflect each one.
 - e2e doesn't run in CI yet; `pages.yml` only builds and deploys.
 - `build/v1` is merged into `main` before the first push, because Pages deploys from `main`.
 - The orchestrator's commit trailer is `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+
+**Owner changes after the build (2026-09-29)**
+- One global teacher passcode. Any number of teachers can be signed in at once, each shown with a
+  Teacher tag (`Person.teacher`), and there's a server-side `logout` action.
+- Teacher sign-in, lock/unlock and sign-out live in the "Your cursor" panel. The separate teacher
+  dialog (`teacherPanel.ts`) was removed.
+- The crosshair pointer shape was removed, so `SHAPES` has 5.
+- The passcode is never committed. Production sets it with `wrangler secret put`, local dev uses
+  the gitignored `worker/.dev.vars`, and the e2e teacher test reads it from there.

@@ -88,7 +88,7 @@ export const COLORS = [
   '#BA7517', '#E24B4A', '#534AB7', '#0F6E56', '#993556', '#5F5E5A',
 ] as const;
 
-export const SHAPES = ['arrow', 'hand', 'pencil', 'star', 'plane', 'crosshair'] as const;
+export const SHAPES = ['arrow', 'hand', 'pencil', 'star', 'plane'] as const;
 
 /** Pixel cursors: 16×16 cells. Palette index 0 = transparent, 1 = the profile color, 2–8 = these. */
 export const ART_SIZE = 16;

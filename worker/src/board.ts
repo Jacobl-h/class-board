@@ -371,7 +371,7 @@ export class Board extends Server<Env> {
   }
 
   protected personOf(id: string, s: ConnState): Person {
-    return { id, clientId: s.clientId, profile: s.profile, presence: s.presence };
+    return { id, clientId: s.clientId, profile: s.profile, presence: s.presence, teacher: s.teacher === true };
   }
 
   /** Everyone who has said hello, once per id (a reconnect can briefly leave two sockets with one id). */

@@ -12,9 +12,9 @@ describe('constants', () => {
     expect(BOARD_H).toBe(2992);
   });
 
-  it('has 12 distinct cursor colors, 6 shapes and 7 fixed pixel colors', () => {
+  it('has 12 distinct cursor colors, 5 shapes and 7 fixed pixel colors', () => {
     expect(new Set(COLORS).size).toBe(12);
-    expect(SHAPES).toEqual(['arrow', 'hand', 'pencil', 'star', 'plane', 'crosshair']);
+    expect(SHAPES).toEqual(['arrow', 'hand', 'pencil', 'star', 'plane']);
     expect(ART_FIXED_COLORS).toHaveLength(7);
   });
 });

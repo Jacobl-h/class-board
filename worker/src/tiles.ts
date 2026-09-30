@@ -141,15 +141,28 @@ function history(host: TileHost, conn: BoardConn, msg: Extract<TileMsg, { type: 
   host.send(conn, { type: 'historyResult', reqId: msg.reqId, slot: msg.slot, versions });
 }
 
+/** Sets the connection's teacher flag and tells everyone, but only when it changes. */
+function setTeacher(host: TileHost, conn: BoardConn, state: ConnState, teacher: boolean): void {
+  if (state.teacher !== teacher) host.updateState(conn, { teacher });
+}
+
 function teacher(host: TileHost, conn: BoardConn, state: ConnState, msg: Extract<TileMsg, { type: 'teacher' }>): void {
+  // Signing out needs no passcode, so it never counts as a wrong try.
+  if (msg.action === 'logout') {
+    setTeacher(host, conn, state, false);
+    host.send(conn, { type: 'ok', reqId: msg.reqId });
+    return;
+  }
   const check = host.gate().check(conn.id, msg.code);
   if (check !== 'ok') {
+    // A signed-in teacher whose passcode stopped working (it was changed) is signed out.
+    if (check === 'bad') setTeacher(host, conn, state, false);
     host.fail(conn, msg.reqId, check === 'bad' ? 'bad_code' : 'locked_out');
     return;
   }
   switch (msg.action) {
     case 'check':
-      conn.setState({ ...state, teacher: true });
+      setTeacher(host, conn, state, true);
       break;
     case 'lock':
     case 'unlock': {

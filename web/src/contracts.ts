@@ -235,7 +235,15 @@ export interface ProfilePanelOpts {
   initial: Profile | null;
   /** When true the panel can't be closed until a valid name is entered. */
   requireName: boolean;
-  onSave: (profile: Profile) => void;
+  /**
+   * teacherCode is passed only when a passcode was typed but no `teacher` was given (first
+   * visit, before the board connects): main.ts signs in once connected.
+   */
+  onSave: (profile: Profile, teacherCode?: string) => void;
+  /** The Teacher section: sign in with the passcode, lock or unlock the board, sign out. */
+  teacher?: TeacherApi;
+  /** Whether the board is locked, for the Teacher section's lock button. */
+  locked?: () => boolean;
 }
 
 /* ---------- teacher and people ---------- */

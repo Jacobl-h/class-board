@@ -72,7 +72,7 @@ describe('isValidProfile', () => {
 
   it('accepts every color and every shape', () => {
     for (const color of COLORS) expect(isValidProfile({ ...shapeProfile, color })).toBe(true);
-    for (const shape of ['arrow', 'hand', 'pencil', 'star', 'plane', 'crosshair']) {
+    for (const shape of ['arrow', 'hand', 'pencil', 'star', 'plane']) {
       expect(isValidProfile({ ...shapeProfile, cursor: { kind: 'shape', shape } })).toBe(true);
     }
   });
@@ -358,8 +358,8 @@ describe('parseClientMsg: rename, restore, history', () => {
 describe('parseClientMsg: teacher', () => {
   const base = { type: 'teacher', reqId: 'abc123def456', code: 'letmein' };
 
-  it('accepts check, lock and unlock without a slot or target', () => {
-    for (const action of ['check', 'lock', 'unlock']) {
+  it('accepts check, lock, unlock and logout without a slot or target', () => {
+    for (const action of ['check', 'lock', 'unlock', 'logout']) {
       expect(parseClientMsg({ ...base, action })).toEqual({ ...base, action });
     }
   });

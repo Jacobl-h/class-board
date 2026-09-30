@@ -52,7 +52,7 @@ describe('hello and snapshot', () => {
     expect(snap.locked).toBe(false);
     expect(snap.rate).toBe(5);
     expect(snap.people).toEqual([
-      { id: c.id, clientId: 'client-Ana', profile: defaultProfile('Ana'), presence: { at: 'board' } },
+      { id: c.id, clientId: 'client-Ana', profile: defaultProfile('Ana'), presence: { at: 'board' }, teacher: false },
     ]);
   });
 
@@ -90,6 +90,18 @@ describe('people', () => {
     expect(joined.person.profile.name).toBe('Ben');
     expect(snap.people.map((p) => p.profile.name).sort()).toEqual(['Ana', 'Ben']);
     expect(b.all('person')).toEqual([]);
+  });
+
+  it('marks everyone as not a teacher until they sign in', async () => {
+    const board = uniqueBoard();
+    const a = await openClient(board);
+    await hello(a, 'Ana');
+    const b = await openClient(board);
+    const snap = await hello(b, 'Ben');
+    expect(snap.people.map((p) => p.teacher)).toEqual([false, false]);
+    expect((await a.next('person')).person.teacher).toBe(false);
+    b.send({ type: 'dock', slot: 3, mode: 'using' });
+    expect((await a.next('person', 2000, (m) => m.event === 'updated')).person.teacher).toBe(false);
   });
 
   it('tells the others when someone leaves', async () => {
@@ -142,7 +154,7 @@ describe('people', () => {
     a.send({ type: 'profile', profile });
     const seenByB = await b.next('person');
     const seenByA = await a.next('person');
-    expect(seenByB).toEqual({ type: 'person', event: 'updated', person: { id: a.id, clientId: 'client-Ana', profile, presence: { at: 'board' } } });
+    expect(seenByB).toEqual({ type: 'person', event: 'updated', person: { id: a.id, clientId: 'client-Ana', profile, presence: { at: 'board' }, teacher: false } });
     expect(seenByA).toEqual(seenByB);
   });
 
@@ -293,7 +305,7 @@ describe('connections', () => {
     a.send({ type: 'dock', slot: 3, mode: 'viewing' });
     const update = await b.next('person');
     expect(update.person).toEqual({
-      id: a.id, clientId: 'client-Ana', profile: defaultProfile('Ana'), presence: { at: 'tile', slot: 3, mode: 'viewing' },
+      id: a.id, clientId: 'client-Ana', profile: defaultProfile('Ana'), presence: { at: 'tile', slot: 3, mode: 'viewing' }, teacher: false,
     });
     expect(await inBoard(board, (brd) => brd.seams.maxConnections)).toBeUndefined();
     b.send({ type: 'cursor', x: 7, y: 8 });

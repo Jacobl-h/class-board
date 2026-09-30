@@ -20,7 +20,6 @@ import { openProfilePanel } from './profile/panel';
 import { loadIdentity, saveProfile } from './profile/storage';
 import { createBoardState } from './state/boardState';
 import { createTeacher } from './teacher/teacher';
-import { openTeacherPanel } from './teacher/teacherPanel';
 import { openHistory } from './tiles/historyPanel';
 import { openPostDialog } from './tiles/postDialog';
 import { hideBanner, showBanner } from './ui/banner';
@@ -58,7 +57,11 @@ function sameProfile(a: Profile, b: Profile): boolean {
 const inRect = (r: { x: number; y: number; w: number; h: number }, x: number, y: number): boolean =>
   x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 
-function start(clientId: string, initial: Profile): void {
+/**
+ * teacherCode is a passcode typed on the first visit, before there was a board to check it
+ * against: it's tried once the first snapshot arrives.
+ */
+function start(clientId: string, initial: Profile, teacherCode?: string): void {
   const topbarEl = byId('topbar');
   const viewport = byId('viewport');
   const world = byId('world');
@@ -183,6 +186,21 @@ function start(clientId: string, initial: Profile): void {
     topBar.setCursorPreview((await cursorImage(p)).url);
   }
 
+  /** "Your cursor": the profile, plus the Teacher section (sign in, lock or unlock, sign out). */
+  function openProfile(): void {
+    openProfilePanel({
+      initial: current,
+      requireName: true,
+      teacher,
+      locked: () => state.locked(),
+      onSave: (p) => {
+        adopt(p);
+        sent.push(p);
+        socket.send({ type: 'profile', profile: p });
+      },
+    });
+  }
+
   function adopt(p: Profile): void {
     current = p;
     saveProfile(p);
@@ -197,16 +215,7 @@ function start(clientId: string, initial: Profile): void {
     zoomIn: () => center(1.25),
     zoomOut: () => center(0.8),
     fit: () => camera.fitBoard(),
-    profile: () =>
-      openProfilePanel({
-        initial: current,
-        requireName: true,
-        onSave: (p) => {
-          adopt(p);
-          sent.push(p);
-          socket.send({ type: 'profile', profile: p });
-        },
-      }),
+    profile: () => openProfile(),
     help: () => openHelp(new URL(BOARD_ORIGIN).host),
   });
   topBar.setBoardName(BOARD);
@@ -261,7 +270,7 @@ function start(clientId: string, initial: Profile): void {
     state,
     teacher,
     onJump,
-    onTeacher: () => openTeacherPanel(teacher, state),
+    onTeacher: openProfile,
   });
 
   /* ---------- state → banners, rate, people ---------- */
@@ -300,6 +309,15 @@ function start(clientId: string, initial: Profile): void {
   }
 
   let fitted = false;
+  let pendingCode = teacherCode || undefined;
+
+  function signInWith(code: string): void {
+    teacher.login(code).then((result) => {
+      if (result === 'ok') toast("You're signed in as a teacher.");
+      else if (result === 'bad') toast("That passcode isn't right. Open Your cursor to try again.");
+      else toast('Too many tries. Wait 10 minutes and try again.');
+    }, report);
+  }
   state.on('snapshot', () => {
     boardFull = false;
     hideBanner('limit');
@@ -310,6 +328,11 @@ function start(clientId: string, initial: Profile): void {
       fitted = true;
       camera.fitBoard();
       focus.start();
+    }
+    if (pendingCode !== undefined) {
+      const code = pendingCode;
+      pendingCode = undefined;
+      signInWith(code);
     }
   });
   state.on('locked', syncLocked);
@@ -375,9 +398,9 @@ if (identity.profile) {
   openProfilePanel({
     initial: null,
     requireName: true,
-    onSave: (p) => {
+    onSave: (p, teacherCode) => {
       saveProfile(p);
-      start(identity.clientId, p);
+      start(identity.clientId, p, teacherCode);
     },
   });
 }

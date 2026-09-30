@@ -46,7 +46,7 @@ You need Node 24 and npm 11.
 
 ```bash
 npm install
-cp worker/.dev.vars.example worker/.dev.vars   # local teacher passcode: letmein
+cp worker/.dev.vars.example worker/.dev.vars   # then put your teacher passcode in it (gitignored)
 npm run dev:worker    # the Worker on http://localhost:8787
 npm run dev:web       # the site on http://localhost:5173 (in a second terminal)
 ```
@@ -66,8 +66,8 @@ npm run e2e         # Playwright, Chromium; starts the Worker and the site itsel
 
 - One package: `npm test -w shared`, `npm test -w web -- camera`. Worker tests are split into
   `npm run test:unit -w worker` (pure modules) and `npm run test:do -w worker` (the Durable Object).
-- First e2e run: `npx playwright install chromium`. The teacher test uses the passcode in
-  `worker/.dev.vars` (`letmein` by default; set `E2E_TEACHER_CODE` if you changed it).
+- First e2e run: `npx playwright install chromium`. The teacher test reads the passcode from
+  `worker/.dev.vars` (falling back to `letmein`), so it never has to be written into the repo.
 - `E2E_ALL_BROWSERS=1` also runs the focus-mode test in Firefox and WebKit (install them with
   `npx playwright install firefox webkit`). `E2E_NETWORK=1` also runs the test that posts a real link.
 - Load test against a deployed Worker: `node scripts/loadtest.mjs https://<worker>.workers.dev loadtest 75 60 5`
@@ -84,11 +84,15 @@ daily limits.
 
 ## Teacher quick guide
 
-1. Click **N here** in the top bar to open the people list, then **Teacher** at the bottom.
-2. Enter the passcode (the Worker secret `TEACHER_CODE`). It is remembered for this browser
-   tab only.
-3. **Lock** the board so students can't add, replace, rename or restore tiles. Students see a
-   banner, "The board is locked." **Unlock** to let them edit again.
+1. Click **Your cursor** in the top bar, type the passcode under **Teacher passcode**, and press
+   **Save**. (**Teacher sign-in** at the bottom of the people list opens the same panel.) The
+   passcode is remembered for this browser tab only.
+2. There is one passcode for every board: the Worker secret `TEACHER_CODE`. Share it with
+   co-teachers and TAs. Any number of people can be signed in as teachers at once, and each one
+   shows a **Teacher** tag in the people list.
+3. In the same **Your cursor** panel, **Lock the board** so students can't add, replace, rename
+   or restore tiles. Students see a banner, "The board is locked." **Unlock the board** to let
+   them edit again. **Sign out** removes your Teacher tag.
 4. On any tile, **Clear** empties it. Nothing is lost: the tile's History keeps every version,
    and Restore brings one back.
 5. In the people list, **Reset cursor** gives a person the plain arrow, for example if someone
@@ -109,5 +113,5 @@ daily limits.
 - **Use a live page:** click it once. Click outside it, or press Esc, to go back to moving the board.
 - **Replace or undo:** **Replace** on any tile swaps its content after a warning. **History**
   lists every earlier version, and **Restore** brings one back.
-- **Your cursor:** click **Your cursor** in the top bar to change your name, color and pointer,
-  or to draw your own 16 by 16 pixel pointer.
+- **Your cursor:** click **Your cursor** in the top bar to change your name, color and pointer
+  (arrow, hand, pencil, star or plane), or to draw your own 16 by 16 pixel pointer.

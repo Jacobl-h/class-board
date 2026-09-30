@@ -37,10 +37,10 @@
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
   grid-template-areas:
-    'swatch name you'
-    'swatch presence presence';
+    'swatch name tag you'
+    'swatch presence presence presence';
   column-gap: 8px;
   align-items: center;
   padding: 6px 8px;
@@ -78,7 +78,18 @@
   color: var(--text-muted);
 }
 
+.person-teacher-tag {
+  grid-area: tag;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .person-you[hidden],
+.person-teacher-tag[hidden],
 .person-reset[hidden] {
   display: none;
 }
@@ -116,73 +127,4 @@
   font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
-}
-
-.teacher-panel {
-  display: grid;
-  gap: 12px;
-  min-width: min(320px, 100%);
-}
-
-.teacher-panel input[name='code'] {
-  font: inherit;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-}
-
-.teacher-panel .profile-field {
-  display: grid;
-  gap: 6px;
-}
-
-.teacher-panel .profile-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.teacher-help {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.teacher-panel .dialog-error {
-  margin: 0;
-  color: var(--danger);
-  font-size: 13px;
-}
-
-.teacher-panel .dialog-error[hidden] {
-  display: none;
-}
-
-.teacher-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.teacher-actions button {
-  font: inherit;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.teacher-actions .teacher-primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
-}
-
-.teacher-actions button:disabled {
-  opacity: 0.6;
-  cursor: default;
 }

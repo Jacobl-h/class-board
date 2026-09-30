@@ -13,7 +13,6 @@ export const SHAPE_TIPS: Record<ShapeName, [number, number]> = {
   pencil: [2, 30],
   star: [16, 16],
   plane: [2, 2],
-  crosshair: [16, 16],
 };
 
 const OUTLINE_ATTRS = `stroke="${OUTLINE}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"`;
@@ -32,14 +31,6 @@ const SHAPE_BODIES: Record<ShapeName, (c: string) => string> = {
   plane: (c) =>
     `<path d="M2 2 L30 12 L20 30 L15 17.5 Z" fill="${c}" ${OUTLINE_ATTRS}/>` +
     `<path d="M15 17.5 L30 12" fill="none" ${OUTLINE_ATTRS}/>`,
-  crosshair: (c) => {
-    const strokes = 'M16 2.5 V11 M16 21 V29.5 M2.5 16 H11 M21 16 H29.5';
-    return (
-      `<g fill="none" stroke="${OUTLINE}" stroke-width="5" stroke-linecap="round"><circle cx="16" cy="16" r="9.5"/><path d="${strokes}"/></g>` +
-      `<g fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round"><circle cx="16" cy="16" r="9.5"/><path d="${strokes}"/></g>` +
-      `<circle cx="16" cy="16" r="1.6" fill="${c}" ${OUTLINE_ATTRS}/>`
-    );
-  },
 };
 
 const SVG_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" width="${CURSOR.imageSize}" height="${CURSOR.imageSize}" viewBox="0 0 32 32"`;

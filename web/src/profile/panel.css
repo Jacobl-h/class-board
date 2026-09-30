@@ -144,3 +144,69 @@
   color: #fff;
   cursor: pointer;
 }
+
+.profile-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.profile-teacher {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.profile-teacher-content {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-teacher-field {
+  display: grid;
+  gap: 4px;
+}
+
+.profile-teacher-label {
+  font-size: 13px;
+}
+
+.profile-panel input[name='teacher-code'] {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.profile-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.teacher-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.teacher-actions button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.teacher-actions .teacher-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.teacher-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

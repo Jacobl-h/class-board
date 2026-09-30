@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COLORS, SHAPES } from '@class-board/shared/constants';
 import { emptyGrid, encodeArt } from '@class-board/shared/pixelArt';
 import type { Profile } from '@class-board/shared/types';
-import { cursorImage, shapeSvg, tagTextColor } from '../src/cursors/render';
+import { cursorImage, SHAPE_TIPS, shapeSvg, tagTextColor } from '../src/cursors/render';
 
 const DATA_PREFIX = 'data:image/svg+xml;utf8,';
 
@@ -31,9 +31,9 @@ describe('shapeSvg', () => {
     expect(svg).toContain('#1A1A1A');
   });
 
-  it('draws six different shapes', () => {
+  it('draws five different shapes', () => {
     const drawings = new Set(SHAPES.map((s) => shapeSvg(s, COLORS[0])));
-    expect(drawings.size).toBe(6);
+    expect(drawings.size).toBe(5);
   });
 
   it('replaces a color that is not a plain hex value, so markup cannot be injected', () => {
@@ -58,7 +58,6 @@ describe('cursorImage for preset shapes', () => {
     ['pencil', 2, 30],
     ['star', 16, 16],
     ['plane', 2, 2],
-    ['crosshair', 16, 16],
   ] as const)('puts the %s hot spot at (%i, %i)', async (shape, x, y) => {
     const img = await cursorImage(shapeProfile(shape));
     expect([img.tipX, img.tipY]).toEqual([x, y]);
@@ -144,5 +143,12 @@ describe('tagTextColor', () => {
     expect(tagTextColor('#fff')).toBe('#1A1A1A');
     expect(tagTextColor('#000')).toBe('#FFFFFF');
     expect(tagTextColor('not a color')).toBe('#FFFFFF');
+  });
+});
+
+describe('removed shapes', () => {
+  it('no longer offers the crosshair', () => {
+    expect(SHAPES).not.toContain('crosshair');
+    expect(Object.keys(SHAPE_TIPS)).toEqual([...SHAPES]);
   });
 });

@@ -312,7 +312,7 @@ focus-mode tile are always live and don't count toward the cap. A live tile whos
 - Fields:
   - `name`: 1–24 characters, required.
   - `color`: one of 12 fixed colors.
-  - `cursor`: either `{ kind: 'shape', shape }`, where `shape` is one of `arrow | hand | pencil | star | plane | crosshair`,
+  - `cursor`: either `{ kind: 'shape', shape }`, where `shape` is one of `arrow | hand | pencil | star | plane`,
     or `{ kind: 'pixels', art, tip }`.
 - The "Your cursor" panel opens on the first visit and can't be closed without a name. The
   "Your cursor" button in the top bar reopens it.
@@ -470,10 +470,19 @@ meta      (key TEXT PRIMARY KEY, value TEXT)   -- locked, budget_day, budget_cou
 
 ### 7.6 Teacher
 
-- The passcode is the Worker secret `TEACHER_CODE`, compared in constant time.
-- Actions: lock or unlock the board, clear a tile, reset a person's cursor.
-- A small "Teacher" link at the bottom of the people list opens the teacher panel. The
-  passcode is kept in `sessionStorage` for that tab only.
+- There is one passcode for every board: the Worker secret `TEACHER_CODE`, compared in
+  constant time. Any number of people can be signed in as teachers at once (co-teachers, TAs).
+  Each teacher's person entry carries `teacher: true`, shown as a "Teacher" tag in the people list.
+- Teachers sign in from the "Your cursor" panel's **Teacher passcode** field. Signed in, the same
+  panel offers lock or unlock and **Sign out**, and "Teacher sign-in" at the bottom of the people
+  list opens it too. On a first visit, a passcode typed before the board connects is used once
+  the first snapshot arrives.
+- Actions: sign in (`check`), sign out (`logout`), lock or unlock the board, clear a tile, reset
+  a person's cursor. A teacher action answered with `bad_code` (the passcode was changed) signs
+  that connection out.
+- The passcode is kept in `sessionStorage` for that tab only, and it's re-checked on every
+  reconnect. It's never written into the repository: production uses the secret, and local
+  development uses the gitignored `worker/.dev.vars`.
 
 ## 8. Error handling
 

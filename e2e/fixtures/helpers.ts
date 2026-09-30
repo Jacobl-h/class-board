@@ -1,11 +1,37 @@
 import { expect, test } from '@playwright/test';
 import type { Browser, BrowserContext, FrameLocator, Locator, Page } from '@playwright/test';
+import fs from 'node:fs';
 import path from 'node:path';
 
 /** Slot index of tile C4 (row C = 2, column 4 = 3; 2 * 10 + 3). */
 export const C4 = 23;
 export const PROFILE_KEY = 'classBoard.profile';
-export const TEACHER_CODE = process.env.E2E_TEACHER_CODE ?? 'letmein';
+
+/**
+ * The teacher passcode the local Worker checks: TEACHER_CODE from worker/.dev.vars, so it is never
+ * written into a test. E2E_TEACHER_CODE overrides it; "letmein" is the fallback when the file is
+ * missing. Playwright runs from e2e/ (or the repo root with -w e2e), so both places are tried.
+ */
+export function readTeacherCode(cwd: string = process.cwd()): string {
+  if (process.env.E2E_TEACHER_CODE) return process.env.E2E_TEACHER_CODE;
+  for (const file of [path.resolve(cwd, '../worker/.dev.vars'), path.resolve(cwd, 'worker/.dev.vars')]) {
+    let text: string;
+    try {
+      text = fs.readFileSync(file, 'utf8');
+    } catch {
+      continue;
+    }
+    for (const line of text.split(/\r?\n/)) {
+      const match = /^\s*TEACHER_CODE\s*=\s*(.*?)\s*$/.exec(line);
+      if (!match) continue;
+      const value = match[1]!.replace(/^(["'])(.*)\1$/, '$2');
+      if (value) return value;
+    }
+  }
+  return 'letmein';
+}
+
+export const TEACHER_CODE = readTeacherCode();
 
 /** The dev-only debug handle from master plan section 5.4, reduced to what the tests use. */
 interface DebugHandle {

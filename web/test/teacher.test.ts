@@ -110,6 +110,42 @@ describe('createTeacher session', () => {
     expect(storage.getItem('classBoard.teacher')).toBeNull();
   });
 
+  it('tells the server about the sign-out with the passcode', async () => {
+    const { socket, requests } = fakeSocket(ok);
+    const teacher = createTeacher(socket, memoryStorage({ 'classBoard.teacher': 'letmein' }));
+    teacher.logout();
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ type: 'teacher', action: 'logout', code: 'letmein' });
+    expect(requests[0]).not.toHaveProperty('slot');
+    expect(requests[0]).not.toHaveProperty('target');
+  });
+
+  it('signs out locally even when the logout request fails', async () => {
+    const { socket, requests } = fakeSocket(() => serverError('not_ready'));
+    const teacher = createTeacher(socket, memoryStorage({ 'classBoard.teacher': 'letmein' }));
+    expect(() => teacher.logout()).not.toThrow();
+    expect(teacher.active()).toBe(false);
+    expect(requests).toHaveLength(1);
+    await Promise.resolve();
+  });
+
+  it('signs out locally even when the socket throws', () => {
+    const { socket } = fakeSocket(ok);
+    socket.request = () => {
+      throw new Error('closed');
+    };
+    const teacher = createTeacher(socket, memoryStorage({ 'classBoard.teacher': 'letmein' }));
+    expect(() => teacher.logout()).not.toThrow();
+    expect(teacher.active()).toBe(false);
+  });
+
+  it('sends nothing when logging out while already signed out', () => {
+    const { socket, requests } = fakeSocket(ok);
+    const teacher = createTeacher(socket, memoryStorage());
+    teacher.logout();
+    expect(requests).toHaveLength(0);
+  });
+
   it('works for the tab even when storage throws', async () => {
     const broken = new Proxy({}, { get: () => () => { throw new DOMException('blocked', 'SecurityError'); } }) as Storage;
     const { socket, requests } = fakeSocket(ok);

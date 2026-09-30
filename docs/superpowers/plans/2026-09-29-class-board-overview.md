@@ -55,7 +55,9 @@ moves up one step. Fable is never used.
 - Tiles only run live when they're on screen and zoomed in enough (at most 12 at once), so 80
   embedded pages don't overload a laptop.
 - Uploaded HTML runs in a strict sandbox. It can't touch the board or anyone's data.
-- If no teacher passcode is set, nobody can unlock teacher mode.
+- One teacher passcode works on every board, and any number of teachers can be signed in at
+  once (each shows a Teacher tag). Teachers sign in from the "Your cursor" panel. If no
+  passcode is set, nobody can sign in as a teacher.
 - Focus mode is full page within the site (not the browser's full screen), and it never opens
   an empty tile.
 - Names above tiles grow as you zoom out, so they stay readable on the overview.

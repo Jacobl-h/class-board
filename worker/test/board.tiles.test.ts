@@ -306,4 +306,98 @@ describe('teacher', () => {
     const { clients: [t] } = await setup(['Teacher']);
     expect(await request(t!, { type: 'teacher', code: TEACHER, action: 'resetCursor', target: 'nobody' })).toMatchObject({ code: 'not_found' });
   });
+
+  it('shows every signed-in teacher to everyone, and lets them all act at once', async () => {
+    const { board, clients: [t1, t2, s] } = await setup(['Ada', 'Bo', 'Sam']);
+    expect(await request(t1!, { type: 'teacher', code: TEACHER, action: 'check' })).toMatchObject({ type: 'ok' });
+    expect(await request(t2!, { type: 'teacher', code: TEACHER, action: 'check' })).toMatchObject({ type: 'ok' });
+    expect(await s!.next('person', 2000, (m) => m.person.id === t1!.id)).toMatchObject({ event: 'updated', person: { teacher: true } });
+    expect(await s!.next('person', 2000, (m) => m.person.id === t2!.id)).toMatchObject({ event: 'updated', person: { teacher: true } });
+    const late = await openClient(board);
+    const snap = await hello(late, 'Late');
+    const flags = Object.fromEntries(snap.people.map((p) => [p.profile.name, p.teacher]));
+    expect(flags).toEqual({ 'Ada': true, 'Bo': true, Sam: false, Late: false });
+
+    expect(await request(t1!, { type: 'teacher', code: TEACHER, action: 'lock' })).toMatchObject({ type: 'ok' });
+    expect(await request(t2!, { type: 'teacher', code: TEACHER, action: 'unlock' })).toMatchObject({ type: 'ok' });
+    expect(await request(t2!, { type: 'teacher', code: TEACHER, action: 'lock' })).toMatchObject({ type: 'ok' });
+    expect(await request(t1!, { type: 'teacher', code: TEACHER, action: 'unlock' })).toMatchObject({ type: 'ok' });
+    await waitFor(() => s!.all('locked').length === 4, 2000, 'four lock changes');
+    expect(s!.all('locked').map((m) => m.locked)).toEqual([true, false, true, false]);
+    await postLink(s!, 5, 'https://example.com/');
+    const v1 = await nextTile(s!, 5);
+    expect(await request(t1!, { type: 'teacher', code: TEACHER, action: 'clear', slot: 5 })).toMatchObject({ type: 'ok' });
+    const v2 = await nextTile(s!, 5, v1.version);
+    await postLink(s!, 5, 'https://example.com/', v2.version);
+    const v3 = await nextTile(s!, 5, v2.version);
+    expect(await request(t2!, { type: 'teacher', code: TEACHER, action: 'clear', slot: 5 })).toMatchObject({ type: 'ok' });
+    expect(await nextTile(s!, 5, v3.version)).toMatchObject({ kind: 'empty' });
+  });
+
+  it('only broadcasts a sign-in when the flag changes', async () => {
+    const { clients: [t, s] } = await setup(['Teacher', 'Sam']);
+    await request(t!, { type: 'teacher', code: TEACHER, action: 'check' });
+    await request(t!, { type: 'teacher', code: TEACHER, action: 'check' });
+    await request(t!, { type: 'teacher', code: TEACHER, action: 'lock' });
+    await s!.next('locked');
+    expect(s!.all('person').filter((m) => m.person.id === t!.id)).toHaveLength(1);
+  });
+
+  it('signs out one teacher on logout while the other keeps working', async () => {
+    const { board, clients: [t1, t2, s] } = await setup(['Ada', 'Bo', 'Sam']);
+    await request(t1!, { type: 'teacher', code: TEACHER, action: 'check' });
+    await request(t2!, { type: 'teacher', code: TEACHER, action: 'check' });
+    await s!.next('person', 2000, (m) => m.person.id === t2!.id && m.person.teacher === true);
+    const before = s!.all('person').length;
+    expect(await request(t1!, { type: 'teacher', code: 'anything', action: 'logout' })).toMatchObject({ type: 'ok' });
+    const out = await s!.next('person', 2000, (m) => m.person.id === t1!.id && m.person.teacher === false);
+    expect(out).toMatchObject({ event: 'updated', person: { id: t1!.id, teacher: false } });
+    expect(s!.all('person').slice(before)).toHaveLength(1);
+    const flags = await inBoard(board, (b) => [...b.getConnections()].map((c) => [c.id, stateOf(c)?.teacher]));
+    expect(Object.fromEntries(flags)).toEqual({ [t1!.id]: false, [t2!.id]: true, [s!.id]: false });
+    expect(await request(t2!, { type: 'teacher', code: TEACHER, action: 'lock' })).toMatchObject({ type: 'ok' });
+    expect(await postLink(t2!, 6, 'https://example.com/')).toMatchObject({ type: 'ok' });
+    expect(await postLink(t1!, 7, 'https://example.com/')).toMatchObject({ code: 'locked' });
+  });
+
+  it('never counts a logout as a wrong try, and a logout while signed out changes nothing', async () => {
+    const { clients: [t, s] } = await setup(['Teacher', 'Sam']);
+    for (let i = 0; i < 6; i++) {
+      expect(await request(t!, { type: 'teacher', code: 'nope', action: 'logout' })).toMatchObject({ type: 'ok' });
+    }
+    expect(await request(t!, { type: 'teacher', code: TEACHER, action: 'check' })).toMatchObject({ type: 'ok' });
+    await s!.next('person', 2000, (m) => m.person.id === t!.id && m.person.teacher === true);
+    expect(s!.all('person').filter((m) => m.person.id === t!.id)).toHaveLength(1);
+  });
+
+  it('signs a teacher out when their passcode stops working', async () => {
+    const { board, clients: [t, s] } = await setup(['Teacher', 'Sam']);
+    await request(t!, { type: 'teacher', code: TEACHER, action: 'check' });
+    await s!.next('person', 2000, (m) => m.person.id === t!.id && m.person.teacher === true);
+    expect(await request(t!, { type: 'teacher', code: 'old-code', action: 'lock' })).toMatchObject({ code: 'bad_code' });
+    expect(await s!.next('person', 2000, (m) => m.person.id === t!.id)).toMatchObject({ person: { teacher: false } });
+    const flags = await inBoard(board, (b) => [...b.getConnections()].map((c) => stateOf(c)?.teacher));
+    expect(flags).toEqual([false, false]);
+  });
+
+  it('accepts the same passcode on different boards', async () => {
+    const a = await setup(['Ada']);
+    const b = await setup(['Ada']);
+    expect(await request(a.clients[0]!, { type: 'teacher', code: TEACHER, action: 'check' })).toMatchObject({ type: 'ok' });
+    expect(await request(b.clients[0]!, { type: 'teacher', code: TEACHER, action: 'check' })).toMatchObject({ type: 'ok' });
+    for (const { board } of [a, b]) {
+      expect(await inBoard(board, (x) => [...x.getConnections()].map((c) => stateOf(c)?.teacher))).toEqual([true]);
+    }
+  });
+
+  it('never marks a student as a teacher', async () => {
+    const { clients: [t, s] } = await setup(['Teacher', 'Sam']);
+    expect(await request(s!, { type: 'teacher', code: 'guess', action: 'check' })).toMatchObject({ code: 'bad_code' });
+    await request(t!, { type: 'teacher', code: TEACHER, action: 'check' });
+    await request(t!, { type: 'teacher', code: TEACHER, action: 'resetCursor', target: s!.id });
+    await s!.next('person', 2000, (m) => m.person.id === s!.id);
+    const seen = [...t!.all('person'), ...s!.all('person')].filter((m) => m.person.id === s!.id);
+    expect(seen.length).toBeGreaterThan(0);
+    for (const m of seen) expect(m.person.teacher).toBe(false);
+  });
 });

@@ -1,10 +1,11 @@
 import { COLORS, LIMITS, SHAPES } from '@class-board/shared/constants';
 import { decodeArt } from '@class-board/shared/pixelArt';
 import { cleanText, isValidProfile } from '@class-board/shared/protocol';
-import type { CursorDesign, Profile, ShapeName } from '@class-board/shared/types';
-import type { ProfilePanelOpts } from '../contracts';
+import type { CursorDesign, ErrorCode, Profile, ShapeName } from '@class-board/shared/types';
+import type { ProfilePanelOpts, Unsubscribe } from '../contracts';
 import { cursorImage, shapeSvg, tagTextColor } from '../cursors/render';
 import { h } from '../ui/dom';
+import { errorText } from '../ui/errors';
 import { openModal } from '../ui/modal';
 import { createPixelEditor } from './pixelEditor';
 import './panel.css';
@@ -19,6 +20,17 @@ type Tab = 'shape' | 'pixels';
 
 const PLACEHOLDER_NAME = 'Your name';
 
+const TEACHER_TEXT = {
+  bad: "That passcode isn't right.",
+  locked_out: 'Too many tries. Wait 10 minutes and try again.',
+  network: "Couldn't reach the board. Check your connection and try again.",
+} as const;
+
+function failureText(err: unknown): string {
+  const code = (err as { code?: ErrorCode } | null)?.code;
+  return (code && errorText(code)) || TEACHER_TEXT.network;
+}
+
 export function openProfilePanel(opts: ProfilePanelSeams): void {
   const initial = opts.initial && isValidProfile(opts.initial) ? opts.initial : null;
   const closable = !(opts.requireName && !initial);
@@ -29,6 +41,12 @@ export function openProfilePanel(opts: ProfilePanelSeams): void {
   let tab: Tab = initial?.cursor.kind === 'pixels' ? 'pixels' : 'shape';
   let previewSeq = 0;
   let cleanedUp = false;
+  let saving = false;
+  /** What the board's lock state is after our own lock or unlock, until the panel re-reads it. */
+  let lockedAfterAction: boolean | null = null;
+  let codeInput: HTMLInputElement | null = null;
+  const teacher = opts.teacher;
+  const unsubscribe: Unsubscribe[] = [];
 
   const nameInput = h('input', {
     type: 'text',
@@ -99,6 +117,20 @@ export function openProfilePanel(opts: ProfilePanelSeams): void {
     void refreshPreview();
   });
 
+  const teacherError = h('p', { class: 'dialog-error teacher-error', hidden: true, attrs: { role: 'alert' } });
+  const teacherContent = h('div', { class: 'profile-teacher-content' });
+  const teacherSection = h('div', { class: 'profile-field profile-teacher', dataset: { section: 'teacher' } },
+    h('span', { class: 'profile-label' }, 'Teacher'),
+    teacherContent,
+    teacherError);
+
+  const saveButton = h('button', {
+    type: 'button',
+    class: 'profile-save',
+    dataset: { action: 'save' },
+    on: { click: () => save() },
+  }, 'Save') as HTMLButtonElement;
+
   const body = h('div', { class: 'profile-panel' },
     h('label', { class: 'profile-field' }, h('span', { class: 'profile-label' }, 'Name'), nameInput),
     errorEl,
@@ -111,8 +143,8 @@ export function openProfilePanel(opts: ProfilePanelSeams): void {
     h('div', { class: 'profile-preview' },
       h('span', { class: 'profile-label' }, 'Preview'),
       h('div', { class: 'profile-preview-box' }, previewImg, previewTag)),
-    h('div', { class: 'profile-actions' },
-      h('button', { type: 'button', class: 'profile-save', dataset: { action: 'save' }, on: { click: () => save() } }, 'Save')));
+    teacherSection,
+    h('div', { class: 'profile-actions' }, saveButton));
 
   const handle = openModal({
     title: 'Your cursor',
@@ -127,6 +159,82 @@ export function openProfilePanel(opts: ProfilePanelSeams): void {
     cleanedUp = true;
     previewSeq++;
     editor.destroy();
+    for (const off of unsubscribe) off();
+    unsubscribe.length = 0;
+  }
+
+  function showTeacherError(text: string): void {
+    teacherError.textContent = text;
+    teacherError.hidden = false;
+  }
+
+  function hideTeacherError(): void {
+    teacherError.hidden = true;
+  }
+
+  function renderTeacher(): void {
+    hideTeacherError();
+    if (teacher?.active()) {
+      codeInput = null;
+      const locked = lockedAfterAction ?? opts.locked?.() ?? false;
+      const toggle = h('button', {
+        type: 'button',
+        class: 'teacher-primary',
+        dataset: { action: locked ? 'unlock' : 'lock' },
+        on: { click: () => void toggleLock(toggle, locked) },
+      }, locked ? 'Unlock the board' : 'Lock the board') as HTMLButtonElement;
+      const logout = h('button', {
+        type: 'button',
+        class: 'teacher-secondary',
+        dataset: { action: 'logout' },
+        on: {
+          click: () => {
+            teacher.logout();
+            renderTeacher();
+          },
+        },
+      }, 'Sign out');
+      teacherContent.replaceChildren(
+        h('p', { class: 'profile-hint' }, "You're signed in as a teacher."),
+        h('div', { class: 'teacher-actions' }, toggle, logout),
+      );
+      return;
+    }
+    const previous = codeInput?.value ?? '';
+    codeInput = h('input', {
+      type: 'password',
+      name: 'teacher-code',
+      value: previous,
+      autocomplete: 'off',
+      on: {
+        input: hideTeacherError,
+        keydown: (e) => {
+          if ((e as KeyboardEvent).key === 'Enter') save();
+        },
+      },
+    }) as HTMLInputElement;
+    teacherContent.replaceChildren(
+      h('label', { class: 'profile-teacher-field' },
+        h('span', { class: 'profile-teacher-label' }, 'Teacher passcode'),
+        codeInput),
+      h('p', { class: 'profile-hint' }, 'Only for teachers. Leave it empty otherwise.'),
+    );
+  }
+
+  async function toggleLock(button: HTMLButtonElement, wasLocked: boolean): Promise<void> {
+    if (!teacher) return;
+    button.disabled = true;
+    hideTeacherError();
+    try {
+      await (wasLocked ? teacher.unlock() : teacher.lock());
+      if (cleanedUp) return;
+      lockedAfterAction = !wasLocked;
+      renderTeacher();
+    } catch (err) {
+      if (cleanedUp) return;
+      button.disabled = false;
+      showTeacherError(failureText(err));
+    }
   }
 
   function currentCursor(): CursorDesign {
@@ -200,6 +308,7 @@ export function openProfilePanel(opts: ProfilePanelSeams): void {
   }
 
   function save(): void {
+    if (saving) return;
     const name = cleanText(nameInput.value, LIMITS.nameMax);
     if (!name) {
       showError('Enter a name. Others see it next to your cursor.');
@@ -216,10 +325,51 @@ export function openProfilePanel(opts: ProfilePanelSeams): void {
       showError("That cursor isn't valid. Check the name and drawing, then try again.");
       return;
     }
-    opts.onSave(profile);
-    handle.close();
+    const code = codeInput?.value ?? '';
+    if (!code) {
+      opts.onSave(profile);
+      handle.close();
+      return;
+    }
+    if (!teacher) {
+      // Not connected yet (first visit): main.ts signs in once the board is there.
+      opts.onSave(profile, code);
+      handle.close();
+      return;
+    }
+    void signInAndSave(profile, code);
   }
 
+  async function signInAndSave(profile: Profile, code: string): Promise<void> {
+    if (!teacher) return;
+    saving = true;
+    saveButton.disabled = true;
+    hideTeacherError();
+    try {
+      const result = await teacher.login(code);
+      if (cleanedUp) return;
+      if (result === 'ok') {
+        opts.onSave(profile);
+        handle.close();
+        return;
+      }
+      showTeacherError(TEACHER_TEXT[result]);
+      codeInput?.select();
+    } catch (err) {
+      if (!cleanedUp) showTeacherError(failureText(err));
+    } finally {
+      saving = false;
+      saveButton.disabled = false;
+    }
+  }
+
+  if (teacher) {
+    unsubscribe.push(teacher.onChange(() => {
+      lockedAfterAction = null;
+      renderTeacher();
+    }));
+  }
+  renderTeacher();
   refreshControls();
   void refreshPreview();
   nameInput.focus();

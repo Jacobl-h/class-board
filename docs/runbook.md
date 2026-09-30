@@ -27,9 +27,16 @@ A browser tab opens. Click **Allow**. The terminal prints "Successfully logged i
 npx wrangler secret put TEACHER_CODE
 ```
 
-Type a passcode only you know when prompted (nothing is shown as you type). If asked to create
-a new Worker for the secret, answer yes. Students never see this value. Pick something you can
-type quickly in front of a class.
+Type the teacher passcode when prompted (nothing is shown as you type). If asked to create
+a new Worker for the secret, answer yes. Students never see this value, and it is never
+written into the repository.
+
+- It is one passcode for every board, and any number of people can be signed in with it at
+  once. Give it to co-teachers and TAs; each shows a **Teacher** tag in the people list.
+- Teachers sign in from **Your cursor** in the top bar (the **Teacher passcode** field).
+- To change it later, run the same command again. The new passcode works straight away, and
+  anyone signed in with the old one is signed out on their next teacher action.
+- For local development, the passcode lives in `worker/.dev.vars`, which git ignores.
 
 ## 4. Deploy the Worker
 

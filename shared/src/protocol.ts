@@ -100,7 +100,7 @@ const clientMsgSchema = v.variant('type', [
   v.object({ type: v.literal('history'), reqId, slot: slotSchema }),
   // Teacher messages carry a slot or target only for the actions that use one; valibot drops the rest.
   v.variant('action', [
-    v.object({ ...teacherBase, action: v.picklist(['check', 'lock', 'unlock']) }),
+    v.object({ ...teacherBase, action: v.picklist(['check', 'lock', 'unlock', 'logout']) }),
     v.object({ ...teacherBase, action: v.literal('clear'), slot: slotSchema }),
     v.object({ ...teacherBase, action: v.literal('resetCursor'), target: v.pipe(v.string(), v.regex(ID_RE)) }),
   ]),

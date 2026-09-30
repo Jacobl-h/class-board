@@ -16,6 +16,7 @@ interface Row {
   swatch: HTMLElement;
   name: HTMLElement;
   you: HTMLElement;
+  teacherTag: HTMLElement;
   presence: HTMLElement;
   jump: HTMLElement;
   reset: HTMLElement;
@@ -43,13 +44,14 @@ export function mountPeoplePanel(deps: PeoplePanelDeps): { destroy(): void } {
     const swatch = h('span', { class: 'person-swatch', attrs: { 'aria-hidden': 'true' } });
     const name = h('span', { class: 'person-name' });
     const you = h('span', { class: 'person-you', hidden: true }, 'you');
+    const teacherTag = h('span', { class: 'person-teacher-tag', hidden: true }, 'Teacher');
     const presence = h('span', { class: 'person-presence' });
     const jump = h('button', {
       type: 'button',
       class: 'person-jump',
       dataset: { action: 'jump' },
       on: { click: () => { close(); deps.onJump(row.person); } },
-    }, swatch, name, you, presence);
+    }, swatch, name, teacherTag, you, presence);
     const reset = h('button', {
       type: 'button',
       class: 'person-reset',
@@ -57,7 +59,7 @@ export function mountPeoplePanel(deps: PeoplePanelDeps): { destroy(): void } {
       on: { click: () => resetCursor(row.person) },
     }, 'Reset cursor');
     const el = h('li', { class: 'person', dataset: { person: person.id } }, jump, reset);
-    const row: Row = { el, swatch, name, you, presence, jump, reset, person };
+    const row: Row = { el, swatch, name, you, teacherTag, presence, jump, reset, person };
     return row;
   }
 
@@ -74,8 +76,10 @@ export function mountPeoplePanel(deps: PeoplePanelDeps): { destroy(): void } {
     row.swatch.style.background = person.profile.color;
     row.name.textContent = person.profile.name;
     row.you.hidden = !isYou;
+    row.teacherTag.hidden = person.teacher !== true;
     row.presence.textContent = presenceText(person.presence);
-    row.jump.setAttribute('aria-label', `${person.profile.name}, ${presenceText(person.presence)}. Go to them.`);
+    const role = person.teacher === true ? ', teacher' : '';
+    row.jump.setAttribute('aria-label', `${person.profile.name}${role}, ${presenceText(person.presence)}. Go to them.`);
     row.reset.hidden = !isTeacher;
     row.reset.setAttribute('aria-label', `Reset ${person.profile.name}'s cursor`);
   }
@@ -87,7 +91,7 @@ export function mountPeoplePanel(deps: PeoplePanelDeps): { destroy(): void } {
     const isTeacher = teacher.active();
 
     heading.textContent = `${people.length} here`;
-    teacherButton.textContent = isTeacher ? 'Teacher tools' : 'Teacher';
+    teacherButton.textContent = isTeacher ? 'Teacher tools' : 'Teacher sign-in';
 
     const wanted = new Set(people.map((p) => p.id));
     for (const [id, row] of rows) {
