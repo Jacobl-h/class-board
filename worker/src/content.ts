@@ -162,7 +162,7 @@ export async function runAlarm(host: ContentHost): Promise<number | null> {
     shooter: () => shots?.get() ?? null,
     now: () => host.now(),
     onUpdated: (row) => broadcastIfCurrent(host, row),
-  });
+  }, 8);
   // runShotQueue closes the shooter it used before returning, so the next alarm needs a fresh one.
   shots?.forget();
   return next;

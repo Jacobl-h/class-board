@@ -79,7 +79,7 @@ export const SHOTS = {
   maxWaitMs: 15_000,
   jpegQuality: 70,
   maxAttempts: 3,
-  keepAliveMs: 600_000,
+  keepAliveMs: 60_000,
 } as const;
 
 /** The 12 cursor colors offered in the profile panel. */

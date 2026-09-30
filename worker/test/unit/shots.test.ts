@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DailyLimitError, allowShotRequest, createBrowserShooter, runShotQueue, shotTarget, type ShotDeps, type Shooter,
+  BusyError, DailyLimitError, allowShotRequest, createBrowserShooter, runShotQueue, shotTarget, type ShotDeps, type Shooter,
 } from '../../src/shots';
 import type { BoardStore, VersionRow } from '../../src/store';
 
@@ -309,6 +309,22 @@ describe('runShotQueue: the daily browser limit', () => {
   });
 });
 
+describe('runShotQueue: Browser Rendering is busy', () => {
+  it('moves every due job 30 seconds later without counting an attempt, and stops the run', async () => {
+    const { store, deps, shooter } = setup({ shooter: new FakeShooter([new BusyError('429 Too many requests')]) });
+    store.addRow(row({ id: 1, slot: 1 }), { attempts: 1, notBefore: T0 - 2 });
+    store.addRow(row({ id: 2, slot: 2 }), { notBefore: T0 - 1 });
+
+    const next = await runShotQueue(deps);
+
+    expect(shooter!.urls).toHaveLength(1);
+    expect(store.queue.get(1)).toEqual({ attempts: 1, notBefore: T0 + 30_000 });
+    expect(store.queue.get(2)).toEqual({ attempts: 0, notBefore: T0 + 30_000 });
+    expect(next).toBe(T0 + 30_000);
+    expect(shooter!.closed).toBe(1);
+  });
+});
+
 describe('runShotQueue: other failures', () => {
   it('retries after 1 minute, then 5 minutes, then gives up after the third failure', async () => {
     const fail = () => new Error('net::ERR_CONNECTION_REFUSED');
@@ -427,18 +443,26 @@ describe('createBrowserShooter', () => {
     await expect(createBrowserShooter(fetcher).shoot('https://site.example/')).rejects.toBeInstanceOf(DailyLimitError);
   });
 
-  it('launches a kept-alive browser when there is no session to reuse', async () => {
+  it('launches a browser with a short keep-alive when there is no session to reuse', async () => {
     const { fetcher, calls } = binding({ acquire: () => new Response('Browser time limit exceeded for today', { status: 429 }) });
     await createBrowserShooter(fetcher).shoot('https://site.example/').catch(() => {});
-    expect(calls).toEqual(['GET /v1/sessions', 'POST /v1/devtools/browser?keep_alive=600000']);
+    expect(calls).toEqual(['GET /v1/sessions', 'POST /v1/devtools/browser?keep_alive=60000']);
+  });
+
+  it('turns other 429 refusals (too many browsers too fast) into a BusyError', async () => {
+    const { fetcher } = binding({ acquire: () => new Response('Too many requests', { status: 429 }) });
+    const err = await createBrowserShooter(fetcher).shoot('https://site.example/').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BusyError);
+    expect(err).not.toBeInstanceOf(DailyLimitError);
+    expect((err as Error).message).toContain('429');
   });
 
   it('leaves other launch errors as ordinary errors, so the job is retried', async () => {
-    const { fetcher } = binding({ acquire: () => new Response('Too many requests', { status: 429 }) });
+    const { fetcher } = binding({ acquire: () => new Response('internal error', { status: 500 }) });
     const err = await createBrowserShooter(fetcher).shoot('https://site.example/').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(BusyError);
     expect(err).not.toBeInstanceOf(DailyLimitError);
-    expect((err as Error).message).toContain('429');
   });
 
   it('closes cleanly when it never connected', async () => {

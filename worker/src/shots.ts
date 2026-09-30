@@ -8,6 +8,11 @@ export interface Shooter { shoot(url: string): Promise<ArrayBuffer>; close(): Pr
 
 /** Browser Rendering's free daily browser time is used up. Nothing works until 00:00 UTC. */
 export class DailyLimitError extends Error {}
+/** Browser Rendering refused for now (free plan: 1 new browser every 20 s, 3 at once). */
+export class BusyError extends Error {}
+
+/** How long to wait after a BusyError. Longer than the 20 s between new browsers. */
+const BUSY_RETRY_MS = 30_000;
 
 const CLAUDE_EMBED_PATH = /^\/public\/artifacts\/[^/]+\/embed\/?$/;
 const CLAUDE_NEW_PATH = /^\/(?:code\/)?artifact\//;
@@ -92,6 +97,15 @@ export async function runShotQueue(deps: ShotDeps, maxJobs = 3): Promise<number 
         if (patched && isCurrent(patched)) deps.onUpdated(patched);
         store.dropShot(job.versionId);
       } catch (err) {
+        if (err instanceof BusyError) {
+          // Not a failed attempt: try this and everything else that is due again shortly.
+          const retryAt = deps.now() + BUSY_RETRY_MS;
+          store.retryShot(job.versionId, job.attempts, retryAt);
+          for (let next = store.dueShot(deps.now()); next; next = store.dueShot(deps.now())) {
+            store.retryShot(next.versionId, next.attempts, retryAt);
+          }
+          break;
+        }
         if (err instanceof DailyLimitError) {
           // Everything else that is due would fail the same way, so move it all to tomorrow.
           const retryAt = tomorrowAfterMidnight(deps.now());
@@ -133,12 +147,14 @@ export function allowShotRequest(requestUrl: string, shootUrl: string): boolean 
 }
 
 const DAILY_LIMIT_RE = /time limit exceeded/i;
+const BUSY_RE = /\b429\b|rate limit|too many/i;
 
 /**
- * Screenshots through Browser Rendering. It keeps one browser alive (SHOTS.keepAliveMs) and
- * finds it again with sessions() and connect(), so a Durable Object that wakes up later
- * doesn't spend the "1 new browser every 20 s" allowance. close() only disconnects; the
- * browser itself stays up for the next run.
+ * Screenshots through Browser Rendering. One browser serves a whole queue run, and close()
+ * shuts it down: Browser Rendering counts every second a browser is open, idle or not, and
+ * the free plan allows 10 minutes a day, so a browser left up for reuse can spend the day's
+ * allowance doing nothing. A session left over from a run that died is reused if it's free
+ * (its keep_alive, SHOTS.keepAliveMs, bounds that waste).
  */
 export function createBrowserShooter(binding: Fetcher): Shooter {
   let browser: Browser | null = null;
@@ -159,10 +175,10 @@ export function createBrowserShooter(binding: Fetcher): Shooter {
     return browser;
   }
 
-  async function disconnect(): Promise<void> {
+  async function shutdown(): Promise<void> {
     const b = browser;
     browser = null;
-    await b?.disconnect().catch(() => {});
+    await b?.close().catch(() => {});
   }
 
   return {
@@ -191,12 +207,13 @@ export function createBrowserShooter(binding: Fetcher): Shooter {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        // The session may be gone; the next call starts from sessions() again.
-        await disconnect();
+        // The session may be broken; close it so it stops counting, and start fresh next time.
+        await shutdown();
         if (DAILY_LIMIT_RE.test(message)) throw new DailyLimitError(message);
+        if (BUSY_RE.test(message)) throw new BusyError(message);
         throw err;
       }
     },
-    close: disconnect,
+    close: shutdown,
   };
 }
