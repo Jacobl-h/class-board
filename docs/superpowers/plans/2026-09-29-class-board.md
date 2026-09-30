@@ -1359,3 +1359,8 @@ files already reflect each one.
 - The crosshair pointer shape was removed, so `SHAPES` has 5.
 - The passcode is never committed. Production sets it with `wrangler secret put`, local dev uses
   the gitignored `worker/.dev.vars`, and the e2e teacher test reads it from there.
+- After launch the look was restyled to match the Twin Diagram page on jacoblehrer.com. It uses
+  Fragment Mono (one weight, OFL, bundled in `web/src/styles/fonts/`) on white paper, with 1px
+  black hairlines, square corners, no shadows, uppercase captions, and buttons that invert when
+  on or hovered. Board lines use `--line: calc(1px / var(--cam-s))`, so they stay one screen
+  pixel at any zoom. Dark mode was dropped.

@@ -1,4 +1,4 @@
-/* The history dialog (.modal[data-dialog="history"]). */
+/* The history dialog (.modal[data-dialog="history"]): a list of versions, one per hairline row. */
 
 .history-body {
   display: flex;
@@ -11,7 +11,11 @@
 
 .history-status {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 18px 0;
 }
 
 .history-status[hidden],
@@ -22,57 +26,68 @@
 .history-body .dialog-error {
   margin: 0;
   color: var(--danger);
+  font-size: 10px;
+  letter-spacing: 0.04em;
 }
 
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: var(--hair) solid var(--ink);
 }
 
 .history-row {
   display: grid;
-  grid-template-columns: 96px 1fr auto;
+  grid-template-columns: 80px 1fr auto;
   align-items: center;
   gap: 12px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 7px 3px;
+  border: 0;
+  border-bottom: var(--hair) solid var(--ink);
+  border-radius: 0;
 }
 
-.history-row.is-current {
-  border-color: var(--accent);
-}
-
+/* A small thumbnail frame. */
 .history-thumb {
-  width: 96px;
-  height: 60px;
-  border-radius: calc(var(--radius) / 2);
-  background: var(--bg);
+  width: 80px;
+  height: 50px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
   object-fit: cover;
 }
 
+/* Empty frame: a centered small state, like "no pattern". */
 .history-thumb.is-blank {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
-  font-size: 12px;
+  color: var(--ink);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.history-row.is-current .history-thumb {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .history-info {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   min-width: 0;
 }
 
 .history-title {
   overflow: hidden;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -80,26 +95,43 @@
 .history-label,
 .history-meta {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
 }
 
+/* "Current" as a tiny inverted tag. */
 .history-current {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
+  padding: 1px 5px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
+/* Restore as a mini button. */
 .history-restore {
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  padding: 1px 5px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   font: inherit;
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
+.history-restore:not(:disabled):hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .history-restore:disabled {
-  opacity: 0.6;
+  opacity: 0.35;
   cursor: progress;
 }

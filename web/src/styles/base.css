@@ -1,15 +1,35 @@
-/* The only file that defines variables. Every module's CSS uses these. */
+/* The only file that defines variables. Every module's CSS uses these.
+   The look follows jacoblehrer.com's Twin Diagram: white paper, black hairlines, square corners,
+   Fragment Mono at small sizes, uppercase labels with open letter-spacing, and buttons that
+   invert (black fill, white text) when they're on or hovered. */
+
+@font-face {
+  font-family: 'Fragment Mono';
+  src: url('./fonts/FragmentMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --bg: #f3f2ee;
-  --surface: #ffffff;
-  --border: #d6d3cb;
-  --text: #1f1e1c;
-  --text-muted: #6b6963;
-  --accent: #378add;
-  --danger: #c93b3a;
-  --radius: 8px;
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --topbar-h: 48px;
+  --ink: #000;
+  --paper: #fff;
+  /* The light warm gray of the Twin Diagram's side rail. */
+  --panel: #ececeb;
+  /* One screen pixel. On the zoomable board use --line instead (set on #world). */
+  --hair: 1px;
+
+  /* Role names the modules already use, mapped onto the paper palette. */
+  --bg: var(--paper);
+  --surface: var(--paper);
+  --border: var(--ink);
+  --text: var(--ink);
+  --text-muted: #6b6b6b;
+  --accent: var(--ink);
+  --danger: #c8102e;
+  --radius: 0;
+  --font: 'Fragment Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --topbar-h: 40px;
 
   --z-world: 1;
   --z-cursors: 10;
@@ -18,19 +38,7 @@
   --z-banner: 25;
   --z-modal: 30;
 
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1b1b1a;
-    --surface: #262624;
-    --border: #3d3c39;
-    --text: #ecebe7;
-    --text-muted: #a3a19b;
-    --accent: #5fa3e8;
-    --danger: #f07170;
-  }
+  color-scheme: light;
 }
 
 /* Reset */
@@ -49,9 +57,9 @@ body {
 body {
   overflow: hidden;
   overscroll-behavior: none;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.4 var(--font);
+  background: var(--paper);
+  color: var(--ink);
+  font: 12px/1.3 var(--font);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -62,6 +70,7 @@ p {
   margin: 0;
 }
 
+/* Primitives. Buttons are hairline boxes; modules add the inverted hover or the solid variant. */
 button,
 input,
 textarea,
@@ -71,7 +80,35 @@ select {
 }
 
 button {
+  padding: 2px 8px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: 0.06em;
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='url'],
+input:not([type]),
+textarea {
+  padding: 3px 6px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
 }
 
 img {
@@ -85,7 +122,7 @@ img {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--hair) solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -102,8 +139,8 @@ img {
   z-index: var(--z-topbar);
   flex: none;
   height: var(--topbar-h);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--paper);
+  border-bottom: var(--hair) solid var(--ink);
 }
 
 #viewport {
@@ -112,7 +149,7 @@ img {
   min-height: 0;
   overflow: hidden;
   touch-action: none;
-  background: var(--bg);
+  background: var(--paper);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -124,6 +161,9 @@ img {
   z-index: var(--z-world);
   transform-origin: 0 0;
   will-change: transform;
+  /* One screen pixel at any zoom: board-space lines divide by the camera scale (--cam-s, set
+     on #world by main.ts), so frames stay true hairlines like a drawing. */
+  --line: calc(1px / var(--cam-s, 1));
 }
 
 /* BOARD_W × BOARD_H; the tiles inside are absolutely positioned. */
@@ -141,44 +181,45 @@ img {
   pointer-events: none;
 }
 
+/* "Keep zooming to open C4": the Twin Diagram's toast, black with white type. */
 #hint {
   position: absolute;
   left: 50%;
-  bottom: 24px;
+  bottom: 18px;
   z-index: var(--z-hint);
   max-width: calc(100% - 32px);
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(31, 30, 28, 0.88);
-  color: #fff;
-  font-weight: 500;
+  padding: 5px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 10px;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   pointer-events: none;
   transform: translateX(-50%);
   visibility: hidden;
   opacity: 0;
-  transition: opacity 0.15s ease, visibility 0s linear 0.15s;
+  transition: opacity 0.18s ease, visibility 0s linear 0.18s;
 }
 
 #hint.is-visible {
   visibility: visible;
   opacity: 1;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.18s ease;
 }
 
 /* A stack of banners at the top center, under the top bar. The #app prefix outranks any
    single-id #banner rule in module CSS, whatever order the stylesheets load in. */
 #app > #banner {
   position: fixed;
-  top: calc(var(--topbar-h) + 8px);
+  top: calc(var(--topbar-h) + 10px);
   bottom: auto;
   left: 50%;
   z-index: var(--z-banner);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  width: min(560px, calc(100% - 32px));
+  gap: 6px;
+  width: min(520px, calc(100% - 32px));
   transform: translateX(-50%);
   pointer-events: none;
 }

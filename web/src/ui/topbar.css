@@ -1,3 +1,5 @@
+/* The Twin Diagram's rail header, laid flat: an uppercase title, a small caption, hairline
+   buttons that invert on hover, and one segmented zoom toggle. base.css paints the bar itself. */
 .topbar {
   position: relative;
   z-index: var(--z-topbar);
@@ -5,41 +7,51 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
+  padding: 0 12px;
+  background: var(--paper);
+  border-bottom: var(--hair) solid var(--ink);
+  color: var(--ink);
   font-family: var(--font);
-  font-size: 0.9rem;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 .topbar-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .topbar-title {
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .topbar-board {
   overflow: hidden;
-  max-width: 14em;
+  max-width: 16em;
+  margin-left: 6px;
   color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.06em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* A small inverted tag. */
 .topbar-badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
+  margin-left: 4px;
+  padding: 1px 5px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* The [hidden] attribute loses to the display rules above unless it is restated. */
@@ -48,40 +60,70 @@
   display: none;
 }
 
-.topbar-zoom {
-  min-width: 3.5em;
-  color: var(--text-muted);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
 .topbar-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .topbar-btn:hover {
-  background: var(--bg);
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .topbar-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* − 100% + reads as one segmented toggle: adjacent boxes overlapping by a hairline. */
+.topbar-zoom-group {
+  gap: 0;
+}
+
+.topbar-zoom-group > [data-action='zoom-out'],
+.topbar-zoom-group > [data-action='zoom-in'] {
+  justify-content: center;
+  width: 22px;
+  padding: 0;
+}
+
+.topbar-zoom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  min-width: 4.5em;
+  margin-left: calc(-1 * var(--hair));
+  border: var(--hair) solid var(--ink);
+  color: var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar-zoom-group > [data-action='zoom-in'] {
+  margin-left: calc(-1 * var(--hair));
+}
+
+.topbar-zoom-group > [data-action='fit'] {
+  margin-left: 8px;
 }
 
 .topbar-cursor {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   image-rendering: pixelated;
 }
 
@@ -93,14 +135,18 @@
   }
 }
 
+/* The help dialog's sections. */
 .help-section h3 {
   margin: 0 0 4px;
-  font-size: 0.95rem;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .help-section p {
   margin: 0 0 8px;
-  color: var(--text-muted);
+  color: var(--ink);
   line-height: 1.45;
 }
 
@@ -110,12 +156,13 @@
 
 .help code,
 .help kbd {
-  padding: 1px 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 0.85em;
+  padding: 0 5px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 10px;
 }
 
 .help-keys {

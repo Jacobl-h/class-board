@@ -1,65 +1,89 @@
+/* The 16×16 cursor drawing inside the "Your cursor" dialog. */
+
 .pixel-editor {
   display: grid;
   gap: 10px;
   justify-items: start;
 }
 
+/* Tools: a segmented toggle, the active one inverted. */
 .pixel-tools {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0;
 }
 
 .pixel-tool {
   font: inherit;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  font-size: 11px;
+  margin-left: -1px;
+  padding: 2px 8px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: 0.06em;
   cursor: pointer;
+}
+
+.pixel-tool:first-child {
+  margin-left: 0;
+}
+
+.pixel-tool:hover {
+  background: var(--panel);
 }
 
 .pixel-tool.is-active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--ink);
+  color: var(--paper);
 }
 
+/* Palette: square hairline swatches; the chosen one gets the 2px selection outline. */
 .pixel-palette {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
 }
 
 .pixel-swatch {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
   cursor: pointer;
 }
 
+.pixel-swatch:hover {
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Transparent: a paper square struck through with one hairline diagonal. */
 .pixel-swatch.is-transparent {
-  background:
-    linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%) 0 0 / 10px 10px,
-    linear-gradient(45deg, #ccc 25%, #fff 25%, #fff 75%, #ccc 75%) 5px 5px / 10px 10px;
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), var(--ink) calc(50% - 0.5px), var(--ink) calc(50% + 0.5px), transparent calc(50% + 0.5px)), var(--paper);
 }
 
 .pixel-swatch.is-selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
+/* The drawing sheet: a hairline cell grid on paper. The grid lines are a repeating background
+   under the cells, so painted cells cover them and empty cells show them. */
 .pixel-grid {
   display: grid;
   grid-template-columns: repeat(16, 1fr);
   width: min(100%, 320px);
   aspect-ratio: 1;
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(45deg, #e6e6e6 25%, transparent 25%, transparent 75%, #e6e6e6 75%) 0 0 / 20px 20px,
-    linear-gradient(45deg, #e6e6e6 25%, #fff 25%, #fff 75%, #e6e6e6 75%) 10px 10px / 20px 20px;
+  border: var(--hair) solid var(--ink);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 1px, transparent 1px);
+  background-size: calc(100% / 16) calc(100% / 16);
+  background-position: -1px -1px;
   touch-action: none;
   user-select: none;
   cursor: crosshair;
@@ -67,16 +91,19 @@
 
 .pixel-cell {
   position: relative;
-  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12);
 }
 
+/* The tip: a small square with a cross through it, the drawing's own mark. */
 .pixel-cell.is-tip::after {
   content: '';
   position: absolute;
-  inset: 25%;
-  border: 2px solid #ff00aa;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
+  inset: 18%;
+  border: 1.5px solid var(--ink);
+  outline: 1px solid var(--paper);
+  background:
+    linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink) calc(50% - 0.75px), var(--ink) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    linear-gradient(to bottom left, transparent calc(50% - 0.75px), var(--ink) calc(50% - 0.75px), var(--ink) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    var(--paper);
   pointer-events: none;
 }
 
@@ -84,12 +111,13 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
 }
 
 .pixel-preview {
   line-height: 0;
-  border: 1px solid var(--border);
-  background: #fff;
+  border: var(--hair) solid var(--ink);
+  background: var(--paper);
 }

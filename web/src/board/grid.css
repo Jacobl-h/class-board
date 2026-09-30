@@ -1,49 +1,57 @@
-/* Tiles, labels, cards and hover buttons (Grid). .tile-frame belongs to frames.css, focus mode to focus.css. */
+/* Tiles, labels, cards and hover buttons (Grid). .tile-frame belongs to frames.css, focus mode to focus.css.
+   Tiles are drawing frames: white bodies in one-screen-pixel black lines (--line, set on #world),
+   a figcaption strip above, and a centered small state when a frame is empty. Sizes written as
+   calc(Npx / var(--cam-s)) stay about N screen pixels at any zoom; the clamps keep them legible. */
 
 .tile {
   position: absolute;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius);
+  border-radius: 0;
 }
 
 .tile:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 4px;
+  outline: calc(2 * var(--line)) solid var(--ink);
+  outline-offset: calc(3 * var(--line));
 }
 
-/* Label strip: 32 board units above the tile body. */
+/* Label strip, 32 board units above the body: reads like a figcaption ("B3  Ana"). */
 .tile-label {
   display: flex;
   flex: none;
   align-items: flex-end;
-  gap: 8px;
+  gap: clamp(3px, calc(7px / var(--cam-s, 1)), 28px);
   height: 32px;
-  padding: 0 2px 4px;
-  color: var(--text-muted);
-  font-size: 16px;
+  padding: 0 0 clamp(2px, calc(5px / var(--cam-s, 1)), 8px);
+  color: var(--ink);
+  font-size: 11px;
   line-height: 1;
+  letter-spacing: 0.04em;
 }
 
 .tile-name {
+  order: 1;
   overflow: hidden;
   max-width: 400px;
-  padding: 3px 6px;
+  padding: 0.15em 0.3em;
+  margin: -0.15em -0.3em;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--ink);
   /* --cam-s is the camera scale, set on #world by main.ts. Zoomed out, names grow in board
      units (about 12 px on screen), rising into the 48-unit gutter above, so the overview stays readable. */
-  font-size: clamp(18px, calc(12px / var(--cam-s, 1)), 64px);
-  font-weight: 600;
+  font-size: clamp(4px, calc(12px / var(--cam-s, 1)), 64px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .tile-name:hover:not(:disabled) {
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--border);
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .tile-name:disabled {
@@ -52,50 +60,69 @@
 }
 
 .tile-name-input {
+  order: 1;
   width: 260px;
-  height: 26px;
+  height: 22px;
   padding: 2px 6px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-}
-
-.tile-slot {
-  font-size: clamp(16px, calc(10px / var(--cam-s, 1)), 44px);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.tile-badge {
-  padding: 3px 6px;
-  border-radius: 4px;
-  background: var(--accent);
-  color: #fff;
-  font-size: clamp(11px, calc(8px / var(--cam-s, 1)), 34px);
-  font-weight: 700;
+  border: var(--line) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
   letter-spacing: 0.04em;
 }
 
-/* Tile body: exactly 480×300, so a 1280×800 iframe at scale 0.375 fills it. The outline is a
-   shadow rather than a border so it doesn't take space from the frame. */
+/* The slot id leads the caption, like the Twin Diagram's "01". */
+.tile-slot {
+  order: 0;
+  font-size: clamp(4px, calc(12px / var(--cam-s, 1)), 44px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+}
+
+/* A tiny inverted tag. */
+.tile-badge {
+  order: 2;
+  padding: 0.2em 0.45em;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: clamp(3px, calc(9px / var(--cam-s, 1)), 34px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+}
+
+/* Tile body: exactly 480×300, so a 1280×800 iframe at scale 0.375 fills it. The frame is an
+   outline rather than a border so it doesn't take space from the page inside. */
 .tile-body {
   position: relative;
   flex: none;
   width: 480px;
   height: 300px;
   overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 0;
+  background: var(--paper);
 }
 
+.tile-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: var(--line) solid var(--ink);
+  pointer-events: none;
+}
+
+/* An empty frame is a dashed well. */
 .tile.is-empty .tile-body {
   background: transparent;
-  box-shadow: none;
-  outline: 2px dashed var(--border);
-  outline-offset: -2px;
+}
+
+.tile.is-empty .tile-body::after {
+  border-style: dashed;
 }
 
 /* Grid owns the card: empty, checking, and the screenshot or title card. */
@@ -107,20 +134,26 @@
   flex-direction: column;
 }
 
+/* "Add to C4", centered and small like the Twin Diagram's "no pattern". */
 .tile-add {
   width: 100%;
   height: 100%;
+  padding: 0;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
-  font-size: clamp(20px, calc(11px / var(--cam-s, 1)), 50px);
-  font-weight: 500;
+  color: var(--ink);
+  font-size: clamp(4px, calc(11px / var(--cam-s, 1)), 50px);
+  font-weight: 400;
+  letter-spacing: 0.04em;
 }
 
 .tile-add:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--accent);
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: var(--line);
+  text-underline-offset: 0.3em;
 }
 
 .tile-checking {
@@ -128,29 +161,30 @@
   flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  color: var(--text-muted);
-  font-size: 16px;
+  gap: 0.8em;
+  color: var(--ink);
+  font-size: clamp(4px, calc(11px / var(--cam-s, 1)), 50px);
+  letter-spacing: 0.04em;
 }
 
+/* A square hairline box that blinks, instead of a round spinner. */
 .tile-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: tile-spin 0.8s linear infinite;
+  width: 0.8em;
+  height: 0.8em;
+  border: var(--line) solid var(--ink);
+  background: transparent;
+  animation: tile-blink 1s steps(2, jump-none) infinite;
 }
 
-@keyframes tile-spin {
+@keyframes tile-blink {
   to {
-    transform: rotate(360deg);
+    background: var(--ink);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tile-spinner {
-    animation-duration: 2.4s;
+    animation: none;
   }
 }
 
@@ -168,14 +202,15 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 8px;
+  gap: 0;
   min-height: 0;
   padding: 24px 28px;
 }
 
 .tile-icon {
-  width: clamp(32px, calc(10px / var(--cam-s, 1)), 48px);
-  height: clamp(32px, calc(10px / var(--cam-s, 1)), 48px);
+  width: clamp(20px, calc(16px / var(--cam-s, 1)), 48px);
+  height: clamp(20px, calc(16px / var(--cam-s, 1)), 48px);
+  margin-bottom: 12px;
   object-fit: contain;
 }
 
@@ -184,15 +219,22 @@
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-size: clamp(22px, calc(13px / var(--cam-s, 1)), 56px);
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: clamp(14px, calc(13px / var(--cam-s, 1)), 56px);
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
   overflow-wrap: anywhere;
 }
 
+/* The domain sits under a hairline, like a label under a frame. */
 .tile-domain {
+  align-self: stretch;
+  margin-top: 0.7em;
+  padding-top: 0.5em;
+  border-top: var(--line) solid var(--ink);
   color: var(--text-muted);
-  font-size: clamp(14px, calc(9px / var(--cam-s, 1)), 34px);
+  font-size: clamp(9px, calc(10px / var(--cam-s, 1)), 34px);
+  letter-spacing: 0.04em;
 }
 
 /* Over a screenshot the note sits on a strip at the bottom; on a title card it flows below. */
@@ -201,36 +243,58 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 8px 12px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  border-top: 1px solid var(--border);
-  color: var(--text);
-  font-size: clamp(13px, calc(9px / var(--cam-s, 1)), 36px);
+  padding: 0.6em 1em;
+  background: var(--paper);
+  border-top: var(--line) solid var(--ink);
+  color: var(--ink);
+  font-size: clamp(9px, calc(10px / var(--cam-s, 1)), 36px);
+  letter-spacing: 0.04em;
+}
+
+/* Mini buttons: 9 px on paper, inverting on hover. */
+.tile-hint,
+.tile-action {
+  padding: 0.1em 0.55em;
+  border: var(--line) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: clamp(3px, calc(9px / var(--cam-s, 1)), 32px);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.tile-hint:hover,
+.tile-action:hover {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .tile-hint {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-size: 12px;
-  font-weight: 500;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1;
 }
 
-/* Hover buttons: shown on hover and while anything in the tile has keyboard focus. */
+/* Hover buttons: a segmented group in the corner, like the Twin Diagram's mode toggle.
+   Shown on hover and while anything in the tile has keyboard focus. */
 .tile-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   z-index: 3;
   display: flex;
-  gap: 6px;
+  gap: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease;
+}
+
+.tile-action + .tile-action {
+  margin-left: calc(-1 * var(--line));
 }
 
 .tile:hover .tile-actions,
@@ -239,24 +303,10 @@
   pointer-events: auto;
 }
 
-.tile-action {
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.tile-action:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .tile-action[data-action='clear']:hover {
-  border-color: var(--danger);
-  color: var(--danger);
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
 }
 
 /* Focus mode's Back button; focus.ts un-hides it, focus.css places it in the top layer. */
@@ -265,13 +315,14 @@
   top: 12px;
   left: 12px;
   z-index: 4;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-weight: 600;
 }
 
 .tile.is-blocked .tile-shot {
   filter: saturate(0.85);
+}
+
+/* With a note, the "Blank?" hint sits on the note's strip, right-aligned like the Twin Diagram's
+   mini buttons on a label line; the note leaves it room. */
+.tile-note:has(+ .tile-hint) {
+  padding-right: 15em;
 }

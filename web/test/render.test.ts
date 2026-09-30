@@ -25,10 +25,10 @@ describe('shapeSvg', () => {
     expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
   });
 
-  it.each(SHAPES)('fills %s with the profile color and outlines it in a dark color', (shape) => {
+  it.each(SHAPES)('fills %s with the profile color and outlines it in black', (shape) => {
     const svg = shapeSvg(shape, '#378ADD');
     expect(svg).toContain('#378ADD');
-    expect(svg).toContain('#1A1A1A');
+    expect(svg).toContain('#000000');
   });
 
   it('draws five different shapes', () => {
@@ -114,12 +114,12 @@ describe('tagTextColor', () => {
     expect(tagTextColor('#0F6E56')).toBe('#FFFFFF');
   });
 
-  it('uses near-black on light backgrounds', () => {
-    expect(tagTextColor('#FFFFFF')).toBe('#1A1A1A');
-    expect(tagTextColor('#EF9F27')).toBe('#1A1A1A');
+  it('uses black on light backgrounds', () => {
+    expect(tagTextColor('#FFFFFF')).toBe('#000000');
+    expect(tagTextColor('#EF9F27')).toBe('#000000');
   });
 
-  it('picks whichever of white and #1A1A1A has the higher contrast for all 12 profile colors', () => {
+  it('picks whichever of white and #000000 has the higher contrast for all 12 profile colors', () => {
     const lum = (hex: string) => {
       const n = parseInt(hex.slice(1), 16);
       const c = (v: number) => {
@@ -134,13 +134,13 @@ describe('tagTextColor', () => {
     };
     for (const color of COLORS) {
       const chosen = tagTextColor(color);
-      const other = chosen === '#FFFFFF' ? '#1A1A1A' : '#FFFFFF';
+      const other = chosen === '#FFFFFF' ? '#000000' : '#FFFFFF';
       expect(contrast(color, chosen)).toBeGreaterThanOrEqual(contrast(color, other));
     }
   });
 
   it('accepts short hex, and treats junk as a black background', () => {
-    expect(tagTextColor('#fff')).toBe('#1A1A1A');
+    expect(tagTextColor('#fff')).toBe('#000000');
     expect(tagTextColor('#000')).toBe('#FFFFFF');
     expect(tagTextColor('not a color')).toBe('#FFFFFF');
   });

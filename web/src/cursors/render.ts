@@ -3,8 +3,9 @@ import { decodeArt, paletteColors } from '@class-board/shared/pixelArt';
 import type { Profile, ShapeName } from '@class-board/shared/types';
 import type { CursorImage } from '../contracts';
 
-const OUTLINE = '#1A1A1A';
+const OUTLINE = '#000000';
 const FALLBACK_COLOR = '#5F5E5A';
+const WHITE = '#FFFFFF';
 
 /** Where each preset's hot spot sits inside its 32×32 image. */
 export const SHAPE_TIPS: Record<ShapeName, [number, number]> = {
@@ -15,7 +16,7 @@ export const SHAPE_TIPS: Record<ShapeName, [number, number]> = {
   plane: [2, 2],
 };
 
-const OUTLINE_ATTRS = `stroke="${OUTLINE}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"`;
+const OUTLINE_ATTRS = `stroke="${OUTLINE}" stroke-width="1" stroke-linejoin="miter" stroke-linecap="square"`;
 
 /** Inner markup for each shape, drawn in a 32×32 box. `c` is the profile color. */
 const SHAPE_BODIES: Record<ShapeName, (c: string) => string> = {
@@ -94,10 +95,10 @@ function luminance(hex: string): number {
   return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
 }
 
-/** White or near-black, whichever contrasts more with the background (WCAG relative luminance). */
+/** White or black, whichever contrasts more with the background (WCAG relative luminance). */
 export function tagTextColor(bg: string): string {
   const l = luminance(bg);
   const contrastWithWhite = 1.05 / (l + 0.05);
-  const contrastWithDark = (l + 0.05) / (luminance('#1A1A1A') + 0.05);
-  return contrastWithWhite >= contrastWithDark ? '#FFFFFF' : '#1A1A1A';
+  const contrastWithDark = (l + 0.05) / (luminance(OUTLINE) + 0.05);
+  return contrastWithWhite >= contrastWithDark ? WHITE : OUTLINE;
 }

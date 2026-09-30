@@ -1,3 +1,5 @@
+/* The "Your cursor" dialog (.modal[data-dialog="profile"]). */
+
 .profile-panel {
   display: grid;
   gap: 14px;
@@ -6,117 +8,178 @@
 
 .profile-field {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
+/* Figure-style captions over each frame: 9px uppercase, spaced. */
 .profile-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
-.profile-panel input[name='name'] {
+.profile-panel input[name='name'],
+.profile-panel input[name='teacher-code'] {
   font: inherit;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  font-size: 12px;
+  padding: 4px 6px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.profile-panel input:focus {
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 1px;
 }
 
 .profile-panel .dialog-error {
   margin: 0;
   color: var(--danger);
-  font-size: 13px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
 }
 
 .profile-panel .dialog-error[hidden] {
   display: none;
 }
 
+/* Color swatches: square frames. */
 .profile-swatches {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(12, minmax(0, 30px));
+  gap: 5px;
 }
 
 .profile-swatch {
+  position: relative;
   aspect-ratio: 1;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  cursor: pointer;
   padding: 0;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  cursor: pointer;
 }
 
+.profile-swatch:hover {
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Chosen: the Twin Diagram's selection mark, a white square with a white cross, and the 2px
+   selection outline around the frame. */
 .profile-swatch.is-selected {
-  border-color: var(--text);
-  outline: 2px solid var(--surface);
-  outline-offset: -4px;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
+.profile-swatch.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border: 1.5px solid #fff;
+  background:
+    linear-gradient(to bottom right, transparent calc(50% - 0.8px), #fff calc(50% - 0.8px), #fff calc(50% + 0.8px), transparent calc(50% + 0.8px)),
+    linear-gradient(to bottom left, transparent calc(50% - 0.8px), #fff calc(50% - 0.8px), #fff calc(50% + 0.8px), transparent calc(50% + 0.8px));
+  pointer-events: none;
+}
+
+/* Segmented toggle: adjacent boxes overlapping by a hairline, the chosen one inverted. */
 .profile-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
+  display: inline-flex;
+  justify-self: start;
+  gap: 0;
+  border: 0;
 }
 
 .profile-tab {
   font: inherit;
-  padding: 6px 12px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: -1px;
+  padding: 2px 8px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
 
+.profile-tab:first-child {
+  margin-left: 0;
+}
+
+.profile-tab:hover {
+  background: var(--panel);
+}
+
 .profile-tab.is-selected {
-  color: var(--text);
-  border-bottom-color: var(--accent);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.profile-tabpanel {
+  margin-top: 4px;
 }
 
 .profile-tabpanel[hidden] {
   display: none;
 }
 
+/* Shapes: hairline cells overlapping into one grid; the chosen one outlined 2px. */
 .profile-shapes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  padding: 0 0 1px 1px;
 }
 
 .profile-shape {
   display: grid;
   place-items: center;
+  margin: 0 0 -1px -1px;
   padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
   cursor: pointer;
 }
 
 .profile-shape svg {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+}
+
+.profile-shape:hover {
+  position: relative;
+  z-index: 1;
+  outline: var(--hair) solid var(--ink);
+  outline-offset: 1px;
 }
 
 .profile-shape.is-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .profile-preview {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
+/* The preview sits in a hairline frame, on paper, like a plate. */
 .profile-preview-box {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
+  gap: 6px;
+  padding: 14px 12px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
 }
 
 .profile-preview-img {
@@ -124,10 +187,12 @@
   height: 32px;
 }
 
+/* The name tag keeps the user's own color, squared off. */
 .profile-preview-tag {
-  padding: 2px 8px;
-  border-radius: 999px;
-  font: 600 12px/1.4 var(--font, system-ui, sans-serif);
+  padding: 1px 6px;
+  border-radius: 0;
+  font: 400 11px/1.4 var(--font);
+  letter-spacing: 0.04em;
 }
 
 .profile-actions {
@@ -135,24 +200,37 @@
   justify-content: flex-end;
 }
 
+/* Primary action: solid black. */
 .profile-save {
   font: inherit;
-  padding: 6px 16px;
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: #fff;
+  font-size: 13px;
+  padding: 3px 12px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
+.profile-save:hover {
+  background: #2a2a2a;
+}
+
 .profile-save:disabled {
-  opacity: 0.6;
+  opacity: 0.35;
   cursor: default;
 }
 
+.profile-save:disabled:hover {
+  background: var(--ink);
+}
+
+/* The Teacher section, under a hairline rule with an uppercase caption. */
 .profile-teacher {
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  border-top: var(--hair) solid var(--ink);
 }
 
 .profile-teacher-content {
@@ -166,47 +244,50 @@
 }
 
 .profile-teacher-label {
-  font-size: 13px;
-}
-
-.profile-panel input[name='teacher-code'] {
-  font: inherit;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.06em;
 }
 
 .profile-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
 }
 
 .teacher-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .teacher-actions button {
   font: inherit;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  font-size: 11px;
+  padding: 2px 8px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
 
+.teacher-actions button:not(:disabled):hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .teacher-actions .teacher-primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.teacher-actions .teacher-primary:not(:disabled):hover {
+  background: #2a2a2a;
 }
 
 .teacher-actions button:disabled {
-  opacity: 0.6;
+  opacity: 0.35;
   cursor: default;
 }

@@ -1,4 +1,6 @@
-/* Focus mode: the tile's .tile-body is promoted to the top layer with popover="manual". */
+/* Focus mode: the tile's .tile-body is promoted to the top layer with popover="manual".
+   It is full-bleed paper. The top layer escapes #world's transform but still inherits its
+   --line and --cam-s, so everything here draws with --hair and fixed pixel sizes. */
 
 .tile-body:popover-open {
   position: fixed;
@@ -13,8 +15,13 @@
   overflow: hidden;
   border-radius: 0;
   outline: none;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* No frame line around a full-bleed page. */
+.tile-body:popover-open::after {
+  display: none;
 }
 
 .tile-body:popover-open::backdrop {
@@ -37,19 +44,26 @@
   display: none;
 }
 
+/* A small hairline button in the top-left corner, like the Twin Diagram's back caret. */
 .focus-back {
   position: fixed;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   z-index: 5;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font: 600 14px/1.4 var(--font);
+  padding: 2px 8px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 11px/1.4 var(--font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+
+.focus-back:hover {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .focus-back[hidden] {
@@ -95,7 +109,16 @@
 
 .tile.is-focus:not(.is-live) .tile-actions > [data-action="open"] {
   display: inline-flex;
-  padding: 10px 20px;
-  font-size: 16px;
+  padding: 3px 12px;
+  border-width: var(--hair);
+  font-size: 11px;
+  letter-spacing: 0.06em;
   pointer-events: auto;
+}
+
+/* The page's own "Blank?" hint, at screen size. */
+.tile-body:popover-open .tile-blank-hint,
+.tile-body:popover-open .tile-hint {
+  border-width: var(--hair);
+  font-size: 10px;
 }

@@ -24,18 +24,21 @@
   user-select: none;
 }
 
+/* A square name tag in the person's own color (remote.ts sets the background and a text color
+   that contrasts with it), with a hairline edge so pale colors still read on white paper. */
 .cursor-tag {
   position: absolute;
   left: 14px;
   top: 20px;
   max-width: 220px;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 1px 5px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 600 12px/1.4 var(--font, system-ui, sans-serif);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  font: 400 10px/1.4 var(--font, ui-monospace, monospace);
+  letter-spacing: 0.04em;
 }
 
 .cursor.is-idle .cursor-tag {

@@ -22,7 +22,7 @@
   border: 0;
   transform: scale(0.375);
   transform-origin: 0 0;
-  background: #fff;
+  background: var(--paper);
 }
 
 .tile-shield {
@@ -30,6 +30,12 @@
   inset: 0;
   cursor: pointer;
   background: transparent;
+}
+
+/* Hover on a shielded live frame: a hairline outline, offset like the Twin Diagram's slots. */
+.tile.is-live .tile-body:has(.tile-shield:hover) {
+  outline: var(--line) solid var(--ink);
+  outline-offset: var(--line);
 }
 
 .tile.is-live .tile-card {
@@ -41,22 +47,30 @@
 }
 
 .tile.is-active .tile-body {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  /* In use: the selection outline, two lines thick. */
+  outline: calc(2 * var(--line)) solid var(--ink);
+  outline-offset: var(--line);
 }
 
 .tile-blank-hint {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 6px;
+  bottom: 6px;
   z-index: 2;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font: 500 12px/1.4 var(--font);
+  padding: 0.1em 0.55em;
+  border: var(--line) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 clamp(3px, calc(9px / var(--cam-s, 1)), 32px)/1.4 var(--font);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.tile-blank-hint:hover {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .tile-blank-hint[hidden] {

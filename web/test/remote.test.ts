@@ -190,7 +190,7 @@ describe('cursor look', () => {
     cursors.start();
     frame();
     expect(tagOf(ANA).style.background).toBe(asStyled('background', '#EF9F27'));
-    expect(tagOf(ANA).style.color).toBe(asStyled('color', '#1A1A1A'));
+    expect(tagOf(ANA).style.color).toBe(asStyled('color', '#000000'));
     expect(tagOf(BEN).style.background).toBe(asStyled('background', '#534AB7'));
     expect(tagOf(BEN).style.color).toBe(asStyled('color', '#FFFFFF'));
     cursors.stop();

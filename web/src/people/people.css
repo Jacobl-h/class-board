@@ -1,28 +1,33 @@
+/* The people dropdown under the top bar: a paper sheet in a hairline frame, no shadow. */
+
 .people-panel {
   position: fixed;
   z-index: var(--z-banner, 25);
-  width: min(320px, calc(100vw - 16px));
+  width: min(300px, calc(100vw - 16px));
   max-height: min(70vh, 560px);
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  font-family: var(--font, system-ui, sans-serif);
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 12px/1.3 var(--font);
 }
 
+/* The caption, like "TWIN DIAGRAM", with a hairline rule under it. */
 .people-head {
-  padding: 10px 12px 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+  padding: 8px 10px 7px;
+  border-bottom: var(--hair) solid var(--ink);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
 .people-list {
   margin: 0;
-  padding: 0 4px;
+  padding: 0;
   list-style: none;
   overflow-y: auto;
 }
@@ -30,38 +35,49 @@
 .person {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding-right: 8px;
+}
+
+.person + .person {
+  border-top: var(--hair) solid var(--ink);
 }
 
 .person-jump {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  grid-template-columns: 11px minmax(0, 1fr) auto auto;
   grid-template-areas:
     'swatch name tag you'
     'swatch presence presence presence';
-  column-gap: 8px;
+  column-gap: 7px;
+  row-gap: 1px;
   align-items: center;
-  padding: 6px 8px;
+  padding: 6px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: none;
   color: inherit;
   font: inherit;
+  letter-spacing: 0.02em;
   text-align: left;
   cursor: pointer;
 }
 
 .person-jump:hover {
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--panel);
 }
 
+/* A square color chip in a hairline frame. */
 .person-swatch {
   grid-area: swatch;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  align-self: start;
+  margin-top: 2px;
+  width: 11px;
+  height: 11px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
 }
 
 .person-name {
@@ -69,23 +85,28 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .person-you {
   grid-area: you;
-  font-size: 11px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 
+/* A tiny inverted tag. */
 .person-teacher-tag {
   grid-area: tag;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .person-you[hidden],
@@ -96,35 +117,50 @@
 
 .person-presence {
   grid-area: presence;
-  font-size: 12px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 
+/* Mini button. */
 .person-reset {
   flex: none;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
+  padding: 1px 5px;
+  border: var(--hair) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   font: inherit;
-  font-size: 12px;
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
 
-.people-foot {
-  padding: 6px 12px 10px;
-  border-top: 1px solid var(--border);
-  margin-top: 6px;
+.person-reset:not(:disabled):hover {
+  background: var(--ink);
+  color: var(--paper);
 }
 
+.people-foot {
+  padding: 7px 10px 8px;
+  border-top: var(--hair) solid var(--ink);
+}
+
+/* A small underlined link. */
 .people-teacher {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--text-muted);
+  color: var(--ink);
   font: inherit;
-  font-size: 12px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
+}
+
+.people-teacher:hover {
+  text-decoration-thickness: 2px;
 }
